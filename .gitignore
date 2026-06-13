@@ -1,0 +1,90 @@
+# Python
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.so
+
+.Python
+build/
+dist/
+downloads/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+__init__.py
+alembic/__pycache__/
+alembic/versions/
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# FastAPI
+*.log
+
+# Environment Variables
+.env
+
+# SQLite
+*.db
+*.sqlite3
+
+# Node / React / Vite
+
+node_modules/
+
+dist/
+
+.vite/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# Linux
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Generated Files
+*.pdf
+*.csv
+*.xlsx
+
+# ChromaDB (later)
+chroma_db/
+
+# Uploads (later)
+uploads/
+
+# Redis dump
+dump.rdb
