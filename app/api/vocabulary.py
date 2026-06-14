@@ -115,3 +115,22 @@ def delete_word(
     return {
         "message": "Deleted"
     }
+
+@router.get("/search/{query}")
+def search_words(
+    query: str,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(
+        get_current_user_id
+    ),
+):
+    return (
+        db.query(Vocabulary)
+        .filter(
+            Vocabulary.user_id == user_id,
+            Vocabulary.word.ilike(
+                f"%{query}%"
+            )
+        )
+        .all()
+    )

@@ -21,3 +21,11 @@ class VocabularyResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class VocabularyUpdate(BaseModel):
+    word: str
+    article: str | None = None
+    plural: str | None = None
+    translation: str
+    example_sentence: str | None = None
