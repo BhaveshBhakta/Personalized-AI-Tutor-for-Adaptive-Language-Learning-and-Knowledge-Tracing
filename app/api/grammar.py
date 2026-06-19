@@ -13,6 +13,14 @@ from app.models.grammar_question import (
     GrammarQuestion
 )
 
+from app.models.grammar_progress import (
+    GrammarProgress
+)
+
+from app.core.auth import (
+    get_current_user_id
+)
+
 router = APIRouter(
     prefix="/grammar",
     tags=["Grammar"],
@@ -52,6 +60,9 @@ def answer_question(
     question_id: int,
     answer: str,
     db: Session = Depends(get_db),
+    user_id: int = Depends(
+        get_current_user_id
+    ),
 ):
     question = (
         db.query(
@@ -70,13 +81,74 @@ def answer_question(
             detail="Question not found",
         )
 
-    is_correct = (
-        answer.strip().lower()
-        ==
-        question.correct_answer.strip().lower()
+    correct = (
+        answer ==
+        question.correct_answer
     )
 
+    progress = (
+        db.query(
+            GrammarProgress
+        )
+        .filter(
+            GrammarProgress.user_id
+            == user_id,
+
+            GrammarProgress.topic_id
+            == question.topic_id,
+        )
+        .first()
+    )
+
+    if not progress:
+
+        progress = GrammarProgress(
+            user_id=user_id,
+            topic_id=question.topic_id,
+        )
+
+        db.add(progress)
+
+    progress.total_answers += 1
+
+    if correct:
+        progress.correct_answers += 1
+
+    progress.mastery_score = int(
+        (
+            progress.correct_answers
+            /
+            progress.total_answers
+        ) * 100
+    )
+
+    db.commit()
+
     return {
-        "correct": is_correct,
-        "expected": question.correct_answer,
+        "correct": correct,
+        "expected":
+        question.correct_answer,
+
+        "mastery":
+        progress.mastery_score,
     }
+
+@router.get("/progress")
+def grammar_progress(
+    db: Session = Depends(get_db),
+    user_id: int = Depends(
+        get_current_user_id
+    ),
+):
+    progress = (
+        db.query(
+            GrammarProgress
+        )
+        .filter(
+            GrammarProgress.user_id
+            == user_id
+        )
+        .all()
+    )
+
+    return progress

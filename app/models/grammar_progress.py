@@ -15,11 +15,23 @@ class GrammarProgress(Base):
     )
 
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id")
+        ForeignKey("users.id"),
+        nullable=False
     )
 
     topic_id: Mapped[int] = mapped_column(
-        ForeignKey("grammar_topics.id")
+        ForeignKey("grammar_topics.id"),
+        nullable=False
+    )
+
+    correct_answers: Mapped[int] = mapped_column(
+        Integer,
+        default=0
+    )
+
+    total_answers: Mapped[int] = mapped_column(
+        Integer,
+        default=0
     )
 
     mastery_score: Mapped[int] = mapped_column(
