@@ -11,12 +11,14 @@ from app.core.auth import get_current_user_id
 
 from app.models.flashcard import Flashcard
 from app.models.grammar_progress import GrammarProgress
+from app.models.grammar_topic import GrammarTopic
 from app.models.vocabulary import Vocabulary
 
 router = APIRouter(
     prefix="/planner",
     tags=["Planner"]
 )
+
 
 @router.get("/today")
 def get_today_plan(
@@ -25,7 +27,6 @@ def get_today_plan(
         get_current_user_id
     ),
 ):
-
     due_reviews = (
         db.query(Flashcard)
         .filter(
@@ -43,7 +44,7 @@ def get_today_plan(
         .count()
     )
 
-    grammar = (
+    grammar_progress = (
         db.query(GrammarProgress)
         .filter(
             GrammarProgress.user_id == user_id
@@ -53,21 +54,31 @@ def get_today_plan(
 
     weak_topic = None
 
-    if grammar:
+    if grammar_progress:
 
         weakest = min(
-            grammar,
+            grammar_progress,
             key=lambda x:
             x.mastery_score
         )
 
-        weak_topic = {
-            "topic_id":
-            weakest.topic_id,
+        topic = (
+            db.query(GrammarTopic)
+            .filter(
+                GrammarTopic.id
+                == weakest.topic_id
+            )
+            .first()
+        )
 
-            "mastery":
-            weakest.mastery_score,
-        }
+        if topic:
+            weak_topic = {
+                "name":
+                topic.title,
+
+                "mastery":
+                weakest.mastery_score,
+            }
 
     return {
         "due_reviews":

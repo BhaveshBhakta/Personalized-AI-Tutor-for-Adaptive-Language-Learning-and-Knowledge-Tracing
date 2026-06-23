@@ -2,7 +2,6 @@ from datetime import datetime
 
 from fastapi import APIRouter
 from fastapi import Depends
-from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
 
@@ -23,11 +22,16 @@ router = APIRouter(
 @router.get("/")
 def dashboard(
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    user_id: int = Depends(
+        get_current_user_id
+    ),
 ):
+
     total_words = (
         db.query(Vocabulary)
-        .filter(Vocabulary.user_id == user_id)
+        .filter(
+            Vocabulary.user_id == user_id
+        )
         .count()
     )
 
@@ -49,25 +53,39 @@ def dashboard(
     )
 
     if not profile:
-        raise HTTPException(
-            status_code=404,
-            detail="Learning profile not found",
+
+        profile = LearningProfile(
+            user_id=user_id,
+            target_level="A1",
+            daily_goal_minutes=30,
+            xp=0,
+            streak=0,
         )
+
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
 
     return {
         "total_words": total_words,
         "due_reviews": due_reviews,
-        "daily_goal_minutes": profile.daily_goal_minutes,
-        "xp": profile.xp,
-        "streak": profile.streak,
+        "daily_goal_minutes":
+            profile.daily_goal_minutes,
+        "xp":
+            profile.xp,
+        "streak":
+            profile.streak,
     }
 
 
 @router.get("/study-plan")
 def study_plan(
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    user_id: int = Depends(
+        get_current_user_id
+    ),
 ):
+
     due_reviews = (
         db.query(Flashcard)
         .filter(
