@@ -2,24 +2,13 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-
+from datetime import date
 from app.db.dependencies import get_db
-
-from app.models.grammar_topic import (
-    GrammarTopic,
-)
-
-from app.models.grammar_question import (
-    GrammarQuestion
-)
-
-from app.models.grammar_progress import (
-    GrammarProgress
-)
-
-from app.core.auth import (
-    get_current_user_id
-)
+from app.models.grammar_topic import (GrammarTopic,)
+from app.models.grammar_question import (GrammarQuestion)
+from app.models.grammar_progress import (GrammarProgress)
+from app.core.auth import (get_current_user_id)
+from app.models.learning_profile import (LearningProfile)
 
 router = APIRouter(
     prefix="/grammar",
@@ -105,9 +94,23 @@ def answer_question(
         progress = GrammarProgress(
             user_id=user_id,
             topic_id=question.topic_id,
+            correct_answers=0,
+            total_answers=0,
+            mastery_score=0,
         )
 
         db.add(progress)
+
+    else:
+
+        if progress.correct_answers is None:
+            progress.correct_answers = 0
+
+        if progress.total_answers is None:
+            progress.total_answers = 0
+
+        if progress.mastery_score is None:
+            progress.mastery_score = 0
 
     progress.total_answers += 1
 
@@ -122,6 +125,24 @@ def answer_question(
         ) * 100
     )
 
+    profile = (
+        db.query(
+            LearningProfile
+        )
+        .filter(
+            LearningProfile.user_id
+            == user_id
+        )
+        .first()
+    )
+
+    if profile:
+
+        if correct:
+            profile.xp += 10
+        else:
+            profile.xp += 2
+
     db.commit()
 
     return {
@@ -131,6 +152,9 @@ def answer_question(
 
         "mastery":
         progress.mastery_score,
+
+        "xp":
+        profile.xp if profile else 0,
     }
 
 @router.get("/progress")
