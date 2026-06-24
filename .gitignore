@@ -25,6 +25,7 @@ alembic/__pycache__/
 alembic/versions/
 # Pytest
 .pytest_cache/
+backend/__pycache__
 
 # Coverage
 .coverage
