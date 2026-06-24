@@ -21,8 +21,6 @@ router = APIRouter(
 )
 
 @router.post("/", status_code=201)
-
-@router.post("/")
 def create_word(
     data: VocabularyCreate,
     db: Session = Depends(get_db),
@@ -134,3 +132,51 @@ def search_words(
         )
         .all()
     )
+
+@router.post("/{word_id}/review")
+def review_word(
+    word_id: int,
+    correct: bool,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(
+        get_current_user_id
+    ),
+):
+
+    word = (
+        db.query(Vocabulary)
+        .filter(
+            Vocabulary.id == word_id,
+            Vocabulary.user_id == user_id,
+        )
+        .first()
+    )
+
+    if not word:
+        raise HTTPException(
+            status_code=404,
+            detail="Word not found",
+        )
+
+    if correct:
+
+        word.mastery_score = min(
+            100,
+            word.mastery_score + 10
+        )
+
+    else:
+
+        word.mastery_score = max(
+            0,
+            word.mastery_score - 10
+        )
+
+    db.commit()
+    db.refresh(word)
+
+    return {
+        "word": word.word,
+        "mastery":
+        word.mastery_score,
+    }

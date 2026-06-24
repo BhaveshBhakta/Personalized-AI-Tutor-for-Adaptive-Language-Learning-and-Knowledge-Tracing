@@ -9,7 +9,7 @@ from app.api.german_words import (router as german_words_router)
 from app.api.grammar import (router as grammar_router)
 from app.api.planner import (router as planner_router)
 from app.api.intelligence import (router as intelligence_router)
-
+from app.api.vocabulary_intelligence import (router as vocabulary_intelligence_router)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +29,7 @@ app.include_router(german_words_router)
 app.include_router(grammar_router)
 app.include_router(planner_router)
 app.include_router(intelligence_router)
+app.include_router(vocabulary_intelligence_router)
 
 @app.get("/")
 def root():
