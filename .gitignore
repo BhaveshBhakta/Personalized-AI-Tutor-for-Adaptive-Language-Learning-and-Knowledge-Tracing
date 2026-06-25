@@ -89,3 +89,6 @@ uploads/
 
 # Redis dump
 dump.rdb
+
+#test files
+test_vector.py

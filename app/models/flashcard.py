@@ -1,75 +1,83 @@
 from datetime import datetime
 
-from sqlalchemy import Column
-from sqlalchemy import Integer
-from sqlalchemy import Float
 from sqlalchemy import DateTime
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
+
 from app.db.base import Base
 
 
 class Flashcard(Base):
     __tablename__ = "flashcards"
 
-    id = Column(
-        Integer,
-        primary_key=True,
-        index=True,
+    id: Mapped[int] = mapped_column(
+        primary_key=True
     )
 
-    vocabulary_id = Column(
-        Integer,
+    vocabulary_id: Mapped[int] = mapped_column(
         ForeignKey("vocabulary.id"),
-        nullable=False,
+        nullable=False
     )
 
-    user_id = Column(
-        Integer,
+    user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
-        nullable=False,
+        nullable=False
     )
 
-    review_count = Column(
+    review_count: Mapped[int] = mapped_column(
         Integer,
-        default=0,
+        default=0
     )
 
-    mastery_score = Column(
+    mastery_score: Mapped[int] = mapped_column(
         Integer,
-        default=0,
+        default=0
     )
 
-    stability = Column(
+    stability: Mapped[float] = mapped_column(
         Float,
-        default=1.0,
+        default=1.0
     )
 
-    difficulty = Column(
+    difficulty: Mapped[float] = mapped_column(
         Float,
-        default=5.0,
+        default=5.0
     )
 
-    retrievability = Column(
+    retrievability: Mapped[float] = mapped_column(
         Float,
-        default=1.0,
+        default=1.0
     )
 
-    interval_days = Column(
+    interval_days: Mapped[int] = mapped_column(
         Integer,
-        default=0,
+        default=0
     )
 
-    lapses = Column(
+    lapses: Mapped[int] = mapped_column(
         Integer,
-        default=0,
+        default=0
     )
 
-    last_review = Column(
+    last_review: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=datetime.utcnow
     )
 
-    next_review = Column(
+    next_review: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=datetime.utcnow
+    )
+
+    vocabulary = relationship(
+        "Vocabulary"
+    )
+
+    user = relationship(
+        "User"
     )
