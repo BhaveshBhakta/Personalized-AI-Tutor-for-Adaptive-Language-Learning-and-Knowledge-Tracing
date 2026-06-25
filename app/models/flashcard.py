@@ -1,58 +1,75 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import DateTime
+from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import Float
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-
+from sqlalchemy import DateTime
+from sqlalchemy import ForeignKey
 from app.db.base import Base
 
 
 class Flashcard(Base):
     __tablename__ = "flashcards"
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
     )
 
-    vocabulary_id: Mapped[int] = mapped_column(
+    vocabulary_id = Column(
+        Integer,
         ForeignKey("vocabulary.id"),
-        nullable=False
+        nullable=False,
     )
 
-    user_id: Mapped[int] = mapped_column(
+    user_id = Column(
+        Integer,
         ForeignKey("users.id"),
-        nullable=False
+        nullable=False,
     )
 
-    review_count: Mapped[int] = mapped_column(
+    review_count = Column(
         Integer,
-        default=0
+        default=0,
     )
 
-    mastery_score: Mapped[int] = mapped_column(
+    mastery_score = Column(
         Integer,
-        default=0
+        default=0,
     )
 
-    next_review: Mapped[datetime] = mapped_column(
+    stability = Column(
+        Float,
+        default=1.0,
+    )
+
+    difficulty = Column(
+        Float,
+        default=5.0,
+    )
+
+    retrievability = Column(
+        Float,
+        default=1.0,
+    )
+
+    interval_days = Column(
+        Integer,
+        default=0,
+    )
+
+    lapses = Column(
+        Integer,
+        default=0,
+    )
+
+    last_review = Column(
         DateTime,
-        default=datetime.utcnow
+        default=datetime.utcnow,
     )
 
-    stability: Mapped[float] = mapped_column(
-        Float,
-        default=1.0
-    )
-
-    difficulty: Mapped[float] = mapped_column(
-        Float,
-        default=5.0
-    )
-
-    retrievability: Mapped[float] = mapped_column(
-        Float,
-        default=1.0
+    next_review = Column(
+        DateTime,
+        default=datetime.utcnow,
     )

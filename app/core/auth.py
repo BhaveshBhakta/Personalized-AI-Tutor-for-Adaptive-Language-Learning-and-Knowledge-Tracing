@@ -11,20 +11,24 @@ security = HTTPBearer()
 def get_current_user_id(
     token=Depends(security)
 ):
-    try:
+    print("========== AUTH DEBUG ==========")
+    print("Raw token:", token.credentials)
 
+    try:
         payload = jwt.decode(
             token.credentials,
             settings.SECRET_KEY,
-            algorithms=[
-                settings.ALGORITHM
-            ]
+            algorithms=[settings.ALGORITHM],
         )
+
+        print("Decoded payload:", payload)
 
         return int(payload["sub"])
 
-    except Exception:
+    except Exception as e:
+        print("JWT ERROR:", repr(e))
+
         raise HTTPException(
             status_code=401,
-            detail="Invalid token"
+            detail="Invalid token",
         )
