@@ -41,6 +41,7 @@ htmlcov/
 *.log
 
 # Environment Variables
+backend/.env
 .env
 
 # SQLite
