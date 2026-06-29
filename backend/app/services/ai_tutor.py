@@ -13,16 +13,20 @@ class AITutor:
 
         self,
 
+        user_id: int,
+
         question: str,
 
-        provider: str = "groq",
+        provider: str,
 
     ):
 
         return self.ai.ask(
 
-            question,
+            user_id=user_id,
 
-            provider,
+            question=question,
+
+            provider=provider,
 
         )
