@@ -1,9 +1,7 @@
 import { BrowserRouter } from "react-router-dom";
 import { Routes } from "react-router-dom";
 import { Route } from "react-router-dom";
-
 import MainLayout from "../layouts/MainLayout";
-
 import Dashboard from "../pages/Dashboard";
 import Vocabulary from "../pages/Vocabulary";
 import Flashcards from "../pages/Flashcards";
@@ -15,6 +13,7 @@ import Planner from "../pages/Planner";
 import Login from "../pages/Login";
 import Intelligence from "../pages/Intelligence";
 import VocabularyIntelligence from "../pages/VocabularyIntelligence";
+import AIChat from "../pages/AIChat";
 
 export default function AppRouter() {
   return (
@@ -72,6 +71,11 @@ export default function AppRouter() {
                 <Route
                   path="/planner"
                   element={<Planner />}
+                />
+
+                <Route
+                  path="/ai-chat"
+                  element={<AIChat />}
                 />
 
                 <Route

@@ -1,5 +1,5 @@
-from app.services.ai_orchestrator import (
-    AIOrchestrator,
+from app.services.ai_agent import (
+    AIAgent,
 )
 
 
@@ -7,7 +7,7 @@ class AITutor:
 
     def __init__(self):
 
-        self.ai = AIOrchestrator()
+        self.agent = AIAgent()
 
     def ask(
 
@@ -21,12 +21,12 @@ class AITutor:
 
     ):
 
-        return self.ai.ask(
+        return self.agent.answer(
 
-            user_id=user_id,
+            user_id,
 
-            question=question,
+            question,
 
-            provider=provider,
+            provider,
 
         )
