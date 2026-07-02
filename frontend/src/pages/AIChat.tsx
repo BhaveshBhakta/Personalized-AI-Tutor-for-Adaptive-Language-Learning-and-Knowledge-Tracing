@@ -1,6 +1,10 @@
 import { useState } from "react";
+
 import { api } from "../api/client";
+
 import ChatBubble from "../components/chat/ChatBubble";
+import ChatInput from "../components/chat/ChatInput";
+import ChatSidebar from "../components/chat/ChatSidebar";
 
 interface Message {
   role: "user" | "assistant";
@@ -12,27 +16,32 @@ export default function AIChat() {
   const [messages, setMessages] =
     useState<Message[]>([]);
 
-  const [question, setQuestion] =
-    useState("");
-
   const [loading, setLoading] =
     useState(false);
 
   const [provider, setProvider] =
     useState("groq");
 
-  async function sendMessage() {
+  async function sendMessage(
+    question: string
+  ) {
 
     if (!question.trim()) return;
 
     const userMessage: Message = {
+
       role: "user",
+
       content: question,
+
     };
 
     setMessages((prev) => [
+
       ...prev,
+
       userMessage,
+
     ]);
 
     setLoading(true);
@@ -47,26 +56,35 @@ export default function AIChat() {
         "/ai/ask",
 
         {
+
           question,
+
           provider,
+
         },
 
         {
+
           headers: {
+
             Authorization:
               `Bearer ${token}`,
+
           },
+
         }
 
       );
 
-      const assistant: Message = {
+      const assistantMessage: Message = {
 
         role: "assistant",
 
         content:
+
           res.data.answer ??
-          "No response.",
+
+          "No response received.",
 
       };
 
@@ -74,11 +92,13 @@ export default function AIChat() {
 
         ...prev,
 
-        assistant,
+        assistantMessage,
 
       ]);
 
-    } catch {
+    }
+
+    catch {
 
       setMessages((prev) => [
 
@@ -89,7 +109,8 @@ export default function AIChat() {
           role: "assistant",
 
           content:
-            "Something went wrong.",
+
+            "Something went wrong while contacting the AI.",
 
         },
 
@@ -97,186 +118,154 @@ export default function AIChat() {
 
     }
 
-    setQuestion("");
+    finally {
 
-    setLoading(false);
+      setLoading(false);
+
+    }
 
   }
 
   return (
 
-    <div className="max-w-5xl mx-auto p-8">
+    <div className="flex h-screen bg-gray-50">
 
-      <h1 className="text-4xl font-bold mb-2">
+      <ChatSidebar
 
-        🤖 German AI Tutor
+        provider={provider}
 
-      </h1>
+        setProvider={setProvider}
 
-      <p className="text-gray-500 mb-8">
-
-        Ask anything about German.
-
-      </p>
-
-      <div className="mb-6">
-
-        <select
-
-          value={provider}
-
-          onChange={(e)=>
-            setProvider(
-              e.target.value
-            )
-          }
-
-          className="
-            border
-            rounded
-            p-2
-          "
-
-        >
-
-          <option value="groq">
-
-            Groq
-
-          </option>
-
-          <option value="gemini">
-
-            Gemini
-
-          </option>
-
-        </select>
-
-      </div>
+      />
 
       <div
         className="
-          border
-          rounded-xl
-          h-[500px]
-          overflow-y-auto
-          p-6
-          space-y-6
-          bg-white
-        "
-      >
-
-        {
-
-          messages.length === 0 && (
-
-            <div
-              className="
-                text-center
-                text-gray-400
-                mt-40
-              "
-            >
-
-              Start a conversation 👋
-
-            </div>
-
-          )
-
-        }
-
-        {
-
-          messages.map(
-
-            (msg, index)=>(
-
-             <ChatBubble
-                key={index}
-                role={msg.role}
-                content={msg.content}
-                />
-            )
-
-          )
-
-        }
-
-        {
-
-          loading && (
-
-            <div>
-
-              AI is thinking...
-
-            </div>
-
-          )
-
-        }
-
-      </div>
-
-      <div
-        className="
+          flex-1
           flex
-          gap-3
-          mt-6
+          flex-col
+          p-8
         "
       >
 
-        <input
+        <div className="mb-6">
 
-          value={question}
+          <h1
+            className="
+              text-4xl
+              font-bold
+            "
+          >
 
-          onChange={(e)=>
+            🤖 German AI Tutor
 
-            setQuestion(
-              e.target.value
-            )
+          </h1>
 
-          }
+          <p
+            className="
+              text-gray-500
+              mt-2
+            "
+          >
 
-          onKeyDown={(e)=>{
+            Ask anything about German grammar,
+            vocabulary, pronunciation,
+            Goethe exams or your uploaded PDFs.
 
-            if(e.key==="Enter"){
+          </p>
 
-              sendMessage();
+        </div>
 
-            }
-
-          }}
-
-          placeholder="Ask your German question..."
-
+        <div
           className="
             flex-1
+            overflow-y-auto
+            rounded-xl
             border
-            rounded-xl
-            p-4
+            bg-white
+            p-6
+            space-y-6
+            shadow-sm
           "
-
-        />
-
-        <button
-
-          onClick={sendMessage}
-
-          className="
-            bg-black
-            text-white
-            px-8
-            rounded-xl
-          "
-
         >
 
-          Send
+          {
 
-        </button>
+            messages.length === 0 && (
+
+              <div
+                className="
+                  h-full
+                  flex
+                  items-center
+                  justify-center
+                  text-gray-400
+                "
+              >
+
+                Start a conversation 👋
+
+              </div>
+
+            )
+
+          }
+
+          {
+
+            messages.map(
+
+              (
+
+                message,
+
+                index
+
+              ) => (
+
+                <ChatBubble
+
+                  key={index}
+
+                  role={message.role}
+
+                  content={message.content}
+
+                />
+
+              )
+
+            )
+
+          }
+
+          {
+
+            loading && (
+
+              <div
+                className="
+                  text-gray-500
+                  italic
+                "
+              >
+
+                AI is thinking...
+
+              </div>
+
+            )
+
+          }
+
+        </div>
+
+        <ChatInput
+
+          loading={loading}
+
+          onSend={sendMessage}
+
+        />
 
       </div>
 
