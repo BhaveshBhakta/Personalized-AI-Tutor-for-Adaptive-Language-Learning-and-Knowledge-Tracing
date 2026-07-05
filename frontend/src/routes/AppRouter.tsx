@@ -1,12 +1,15 @@
 import { BrowserRouter } from "react-router-dom";
 import { Routes } from "react-router-dom";
 import { Route } from "react-router-dom";
+
 import MainLayout from "../layouts/MainLayout";
+
 import Dashboard from "../pages/Dashboard";
 import Vocabulary from "../pages/Vocabulary";
 import Flashcards from "../pages/Flashcards";
 import Discover from "../pages/Discover";
 import Settings from "../pages/Settings";
+import Grammar from "../pages/Grammar";
 import GrammarQuiz from "../pages/GrammarQuiz";
 import GrammarProgress from "../pages/GrammarProgress";
 import Planner from "../pages/Planner";
@@ -18,9 +21,7 @@ import AIChat from "../pages/AIChat";
 export default function AppRouter() {
   return (
     <BrowserRouter>
-
       <Routes>
-
         <Route
           path="/login"
           element={<Login />}
@@ -30,9 +31,7 @@ export default function AppRouter() {
           path="*"
           element={
             <MainLayout>
-
               <Routes>
-
                 <Route
                   path="/"
                   element={<Dashboard />}
@@ -51,6 +50,11 @@ export default function AppRouter() {
                 <Route
                   path="/flashcards"
                   element={<Flashcards />}
+                />
+
+                <Route
+                  path="/grammar"
+                  element={<Grammar />}
                 />
 
                 <Route
@@ -89,15 +93,11 @@ export default function AppRouter() {
                     <VocabularyIntelligence />
                   }
                 />
-
               </Routes>
-
             </MainLayout>
           }
         />
-
       </Routes>
-
     </BrowserRouter>
   );
 }
