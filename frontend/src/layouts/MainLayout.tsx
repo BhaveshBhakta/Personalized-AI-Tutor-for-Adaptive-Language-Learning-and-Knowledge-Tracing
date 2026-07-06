@@ -7,6 +7,10 @@ import { Settings } from "lucide-react";
 import { CalendarDays } from "lucide-react";
 import { Languages } from "lucide-react";
 import { BarChart3 } from "lucide-react";
+import {
+  FileText,
+  MessageSquare,
+} from "lucide-react";
 
 export default function MainLayout({
   children,
@@ -148,6 +152,32 @@ export default function MainLayout({
             <Settings size={18} />
             Settings
           </Link>
+
+
+          <Link
+          className="
+            flex
+            items-center
+            gap-3
+          "
+          to="/documents"
+        >
+          <FileText size={18} />
+          Documents
+        </Link>
+
+
+        <Link
+          className="
+            flex
+            items-center
+            gap-3
+          "
+          to="/ai-chat"
+        >
+          <MessageSquare size={18} />
+          AI Tutor
+        </Link>
 
         </nav>
 

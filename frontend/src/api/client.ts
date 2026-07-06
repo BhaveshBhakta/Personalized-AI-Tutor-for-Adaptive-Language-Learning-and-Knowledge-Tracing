@@ -1,10 +1,17 @@
 import axios from "axios";
 
-export const api = axios.create({
-  baseURL: "http://localhost:8000",
-});
+
+export const api =
+  axios.create({
+
+    baseURL:
+      "http://localhost:8000",
+
+  });
+
 
 api.interceptors.request.use(
+
   (config) => {
 
     const token =
@@ -12,10 +19,6 @@ api.interceptors.request.use(
         "token"
       );
 
-    console.log(
-      "TOKEN BEING SENT:",
-      token
-    );
 
     if (token) {
 
@@ -24,6 +27,44 @@ api.interceptors.request.use(
 
     }
 
+
     return config;
   }
+
+);
+
+
+api.interceptors.response.use(
+
+  (response) =>
+    response,
+
+
+  (error) => {
+
+    if (
+      error.response?.status === 401
+    ) {
+
+      localStorage.removeItem(
+        "token"
+      );
+
+
+      if (
+        window.location.pathname
+        !== "/login"
+      ) {
+
+        window.location.href =
+          "/login";
+      }
+    }
+
+
+    return Promise.reject(
+      error
+    );
+  }
+
 );
