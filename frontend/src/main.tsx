@@ -1,22 +1,24 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import {
+  StrictMode,
+} from "react";
 
-import App from "./App";
+import {
+  createRoot,
+} from "react-dom/client";
+
+import App from "./App.tsx";
 
 import "./index.css";
 
-import { AppThemeProvider } from "./components/theme-provider";
 
-ReactDOM.createRoot(
+createRoot(
   document.getElementById("root")!
 ).render(
-  <React.StrictMode>
 
-    <AppThemeProvider>
+  <StrictMode>
 
-      <App />
+    <App />
 
-    </AppThemeProvider>
+  </StrictMode>
 
-  </React.StrictMode>
 );

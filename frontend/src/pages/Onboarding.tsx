@@ -10,20 +10,11 @@ export default function Onboarding() {
 
   async function submit() {
 
-    const token =
-      localStorage.getItem("token");
-
     await api.post(
       "/profile",
       {
         target_level: level,
         daily_goal_minutes: goal,
-      },
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
       }
     );
 

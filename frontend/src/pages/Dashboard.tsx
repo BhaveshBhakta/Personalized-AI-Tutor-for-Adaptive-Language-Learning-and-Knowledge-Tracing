@@ -11,29 +11,14 @@ export default function Dashboard() {
 
   async function loadDashboard() {
 
-    const token =
-      localStorage.getItem("token");
-
     const dashboard =
       await api.get(
-        "/dashboard/",
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
+        "/dashboard/"
       );
 
     const study =
       await api.get(
-        "/dashboard/study-plan",
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
+        "/dashboard/study-plan"
       );
 
     setData(

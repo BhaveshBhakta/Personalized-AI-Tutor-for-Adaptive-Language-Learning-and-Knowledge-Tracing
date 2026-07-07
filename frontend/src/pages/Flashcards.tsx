@@ -31,17 +31,8 @@ export default function Flashcards() {
 
   async function loadCards() {
 
-    const token =
-      localStorage.getItem("token");
-
     const res = await api.get(
-      "/flashcards/due",
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      "/flashcards/due"
     );
 
     setCards(res.data);
@@ -49,12 +40,10 @@ export default function Flashcards() {
     setLoading(false);
   }
 
+
   async function review(
     rating: string
   ) {
-
-    const token =
-      localStorage.getItem("token");
 
     const card =
       cards[current];
@@ -64,12 +53,6 @@ export default function Flashcards() {
         `/flashcards/review/${card.flashcard_id}`,
         {
           rating,
-        },
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
         }
       );
 

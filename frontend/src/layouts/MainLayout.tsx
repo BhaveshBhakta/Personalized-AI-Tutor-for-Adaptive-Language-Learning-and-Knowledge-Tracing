@@ -1,23 +1,50 @@
-import { Link } from "react-router-dom";
-import { LayoutDashboard } from "lucide-react";
-import { Search } from "lucide-react";
-import { BookOpen } from "lucide-react";
-import { Brain } from "lucide-react";
-import { Settings } from "lucide-react";
-import { CalendarDays } from "lucide-react";
-import { Languages } from "lucide-react";
-import { BarChart3 } from "lucide-react";
+import type {
+  ReactNode,
+} from "react";
+
 import {
+  Link,
+} from "react-router-dom";
+
+import {
+  BarChart3,
+  BookOpen,
+  Brain,
+  CalendarDays,
   FileText,
+  Languages,
+  LayoutDashboard,
+  LogOut,
   MessageSquare,
+  Search,
+  Settings,
 } from "lucide-react";
+
+import {
+  useAuth,
+} from "../context/AuthContext";
+
 
 export default function MainLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
+
+  const {
+    logout,
+  } = useAuth();
+
+
+  function handleLogout() {
+
+    logout();
+
+  }
+
+
   return (
+
     <div className="flex min-h-screen">
 
       <aside
@@ -25,6 +52,8 @@ export default function MainLayout({
           w-64
           border-r
           p-6
+          flex
+          flex-col
         "
       >
 
@@ -37,6 +66,7 @@ export default function MainLayout({
         >
           German OS
         </div>
+
 
         <nav
           className="
@@ -55,8 +85,10 @@ export default function MainLayout({
             to="/"
           >
             <LayoutDashboard size={18} />
+
             Dashboard
           </Link>
+
 
           <Link
             className="
@@ -67,8 +99,10 @@ export default function MainLayout({
             to="/planner"
           >
             <CalendarDays size={18} />
+
             Planner
           </Link>
+
 
           <Link
             className="
@@ -79,8 +113,11 @@ export default function MainLayout({
             to="/intelligence"
           >
             <Brain size={18} />
+
             Intelligence
           </Link>
+
+
           <Link
             className="
               flex
@@ -90,8 +127,10 @@ export default function MainLayout({
             to="/discover"
           >
             <Search size={18} />
+
             Discover
           </Link>
+
 
           <Link
             className="
@@ -102,8 +141,10 @@ export default function MainLayout({
             to="/vocabulary"
           >
             <BookOpen size={18} />
+
             Vocabulary
           </Link>
+
 
           <Link
             className="
@@ -114,8 +155,10 @@ export default function MainLayout({
             to="/flashcards"
           >
             <Brain size={18} />
+
             Flashcards
           </Link>
+
 
           <Link
             className="
@@ -126,8 +169,10 @@ export default function MainLayout({
             to="/grammar"
           >
             <Languages size={18} />
+
             Grammar
           </Link>
+
 
           <Link
             className="
@@ -138,8 +183,38 @@ export default function MainLayout({
             to="/grammar-progress"
           >
             <BarChart3 size={18} />
+
             Grammar Progress
           </Link>
+
+
+          <Link
+            className="
+              flex
+              items-center
+              gap-3
+            "
+            to="/documents"
+          >
+            <FileText size={18} />
+
+            Documents
+          </Link>
+
+
+          <Link
+            className="
+              flex
+              items-center
+              gap-3
+            "
+            to="/ai-chat"
+          >
+            <MessageSquare size={18} />
+
+            AI Tutor
+          </Link>
+
 
           <Link
             className="
@@ -150,38 +225,39 @@ export default function MainLayout({
             to="/settings"
           >
             <Settings size={18} />
+
             Settings
           </Link>
 
-
-          <Link
-          className="
-            flex
-            items-center
-            gap-3
-          "
-          to="/documents"
-        >
-          <FileText size={18} />
-          Documents
-        </Link>
-
-
-        <Link
-          className="
-            flex
-            items-center
-            gap-3
-          "
-          to="/ai-chat"
-        >
-          <MessageSquare size={18} />
-          AI Tutor
-        </Link>
-
         </nav>
 
+
+        <button
+          type="button"
+          onClick={
+            handleLogout
+          }
+          className="
+            mt-auto
+            flex
+            items-center
+            gap-3
+            border
+            rounded-lg
+            px-4
+            py-3
+            text-left
+          "
+        >
+
+          <LogOut size={18} />
+
+          Logout
+
+        </button>
+
       </aside>
+
 
       <main
         className="
@@ -189,9 +265,12 @@ export default function MainLayout({
           p-8
         "
       >
+
         {children}
+
       </main>
 
     </div>
+
   );
 }

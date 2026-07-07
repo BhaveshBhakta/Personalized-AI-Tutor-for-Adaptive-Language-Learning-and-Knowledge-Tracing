@@ -10,18 +10,9 @@ export default function GrammarProgress() {
 
   async function loadProgress() {
 
-    const token =
-      localStorage.getItem("token");
-
     const res =
       await api.get(
-        "/grammar/progress",
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
+        "/grammar/progress"
       );
 
     setProgress(res.data);
@@ -60,7 +51,7 @@ export default function GrammarProgress() {
           {" "}
           {item.topic_id}
 
-          <br/>
+          <br />
 
           Mastery:
           {" "}

@@ -8,10 +8,6 @@ import {
 } from "react-router-dom";
 
 import {
-  api,
-} from "../api/client";
-
-import {
   useAuth,
 } from "../context/AuthContext";
 
@@ -44,23 +40,28 @@ export default function Login() {
 
   async function handleLogin() {
 
+    if (
+      !email.trim() ||
+      !password.trim()
+    ) {
+
+      setError(
+        "Please enter your email and password"
+      );
+
+      return;
+    }
+
+
     setError("");
     setLoading(true);
 
+
     try {
 
-      const res =
-        await api.post(
-          "/auth/login",
-          {
-            email,
-            password,
-          }
-        );
-
-
-      login(
-        res.data.access_token
+      await login(
+        email,
+        password
       );
 
 
@@ -84,11 +85,13 @@ export default function Login() {
     } finally {
 
       setLoading(false);
+
     }
   }
 
 
   return (
+
     <div
       className="
         p-10
@@ -117,6 +120,7 @@ export default function Login() {
           w-full
         "
         placeholder="Email"
+        autoComplete="email"
         onChange={(e) =>
           setEmail(
             e.target.value
@@ -135,6 +139,7 @@ export default function Login() {
           mt-3
         "
         placeholder="Password"
+        autoComplete="current-password"
         onChange={(e) =>
           setPassword(
             e.target.value
@@ -143,11 +148,14 @@ export default function Login() {
         onKeyDown={(e) => {
 
           if (
-            e.key === "Enter"
+            e.key === "Enter" &&
+            !loading
           ) {
 
             handleLogin();
+
           }
+
         }}
       />
 
@@ -167,6 +175,7 @@ export default function Login() {
 
 
       <button
+        type="button"
         className="
           mt-4
           border
@@ -191,5 +200,6 @@ export default function Login() {
       </button>
 
     </div>
+
   );
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { api } from "../api/client";
 
 import type { GermanWord }
-from "../types/germanWord";
+  from "../types/germanWord";
 
 export default function Discover() {
 
@@ -41,20 +41,11 @@ export default function Discover() {
     wordId: number
   ) {
 
-    const token =
-      localStorage.getItem("token");
-
     try {
 
       await api.post(
         `/german-words/${wordId}/add`,
-        {},
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
+        {}
       );
 
       alert(
