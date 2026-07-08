@@ -15,7 +15,7 @@ from app.db.dependencies import get_db
 from app.models.document import Document
 from app.services.memory_service import MemoryService
 from app.services.ai_orchestrator import AIOrchestrator
-
+from app.models.conversation import Conversation
 
 router = APIRouter(
     prefix="/ai",
@@ -37,6 +37,8 @@ class Question(BaseModel):
 class ConversationCreate(BaseModel):
     provider: str = "groq"
 
+class ConversationUpdate(BaseModel):
+    title: str
 
 def validate_documents(
     db: Session,
@@ -299,3 +301,86 @@ def stream_ai(
     )
 
     return response
+
+@router.patch(
+    "/conversations/{conversation_id}"
+)
+def rename_conversation(
+    conversation_id: int,
+    data: ConversationUpdate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(
+        get_current_user_id
+    ),
+):
+
+    clean_title = data.title.strip()
+
+
+    if not clean_title:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Title cannot be empty",
+        )
+
+
+    if len(clean_title) > 200:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Title cannot exceed "
+                "200 characters"
+            ),
+        )
+
+
+    conversation = (
+        db.query(Conversation)
+        .filter(
+            Conversation.id
+            == conversation_id,
+
+            Conversation.user_id
+            == user_id,
+        )
+        .first()
+    )
+
+
+    if not conversation:
+
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Conversation not found"
+            ),
+        )
+
+
+    conversation.title = (
+        clean_title
+    )
+
+
+    db.commit()
+
+    db.refresh(
+        conversation
+    )
+
+
+    return {
+        "id":
+            conversation.id,
+
+        "title":
+            conversation.title,
+
+        "provider":
+            conversation.provider,
+
+        "updated_at":
+            conversation.updated_at,
+    }

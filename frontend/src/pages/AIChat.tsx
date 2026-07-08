@@ -11,6 +11,9 @@ import {
 import ChatBubble
   from "../components/chat/ChatBubble";
 
+import {
+  authenticatedFetch,
+} from "../api/streamClient";
 
 interface Message {
 
@@ -90,6 +93,19 @@ export default function AIChat() {
     selectedDocumentIds,
     setSelectedDocumentIds,
   ] = useState<number[]>([]);
+
+  const [
+    editingConversationId,
+    setEditingConversationId,
+  ] = useState<number | null>(
+    null
+  );
+
+
+  const [
+    editingTitle,
+    setEditingTitle,
+  ] = useState("");
 
   const bottomRef =
     useRef<HTMLDivElement | null>(
@@ -246,6 +262,107 @@ export default function AIChat() {
 
   }
 
+  function startRenaming(
+    conversation: Conversation
+  ) {
+
+    if (loading) {
+      return;
+    }
+
+
+    setEditingConversationId(
+      conversation.id
+    );
+
+
+    setEditingTitle(
+      conversation.title
+    );
+  }
+
+
+  async function saveConversationTitle(
+    id: number
+  ) {
+
+    const cleanTitle =
+      editingTitle.trim();
+
+
+    if (!cleanTitle) {
+      return;
+    }
+
+
+    try {
+
+      const res =
+        await api.patch(
+          `/ai/conversations/${id}`,
+          {
+            title:
+              cleanTitle,
+          }
+        );
+
+
+      setConversations(
+        (current) =>
+          current.map(
+            (conversation) => {
+
+              if (
+                conversation.id
+                === id
+              ) {
+
+                return {
+                  ...conversation,
+
+                  title:
+                    res.data.title,
+                };
+
+              }
+
+
+              return conversation;
+
+            }
+          )
+      );
+
+
+      setEditingConversationId(
+        null
+      );
+
+
+      setEditingTitle("");
+
+
+    } catch (error) {
+
+      console.error(
+        "Failed to rename conversation",
+        error
+      );
+
+    }
+  }
+
+
+  function cancelRenaming() {
+
+    setEditingConversationId(
+      null
+    );
+
+    setEditingTitle("");
+
+  }
+
   async function deleteConversation(
     id: number
   ) {
@@ -328,6 +445,8 @@ export default function AIChat() {
 
   }
 
+
+
   async function loadDocuments() {
 
     try {
@@ -388,14 +507,11 @@ export default function AIChat() {
     const cleanQuestion =
       question.trim();
 
-
     if (
       !cleanQuestion ||
       loading
     ) {
-
       return;
-
     }
 
 
@@ -410,7 +526,6 @@ export default function AIChat() {
         activeConversationId =
           await createConversationForMessage();
 
-
       } catch (error) {
 
         console.error(
@@ -418,31 +533,21 @@ export default function AIChat() {
           error
         );
 
-
         return;
-
       }
-
     }
 
 
     const userMessage: Message = {
-
       role: "user",
-
-      content:
-        cleanQuestion,
-
+      content: cleanQuestion,
     };
 
 
     setMessages(
       (prev) => [
-
         ...prev,
-
         userMessage,
-
       ]
     );
 
@@ -458,69 +563,36 @@ export default function AIChat() {
 
     setMessages(
       (prev) => [
-
         ...prev,
-
         {
-
-          role:
-            "assistant",
-
+          role: "assistant",
           content: "",
-
         },
-
       ]
     );
 
 
     try {
 
-      const token =
-        localStorage.getItem(
-          "token"
-        );
-
-
       const response =
-        await fetch(
-
-          "http://127.0.0.1:8000/ai/stream",
-
+        await authenticatedFetch(
+          "/ai/stream",
           {
-
             method: "POST",
 
-            headers: {
+            body: {
+              question:
+                cleanQuestion,
 
-              "Content-Type":
-                "application/json",
+              conversation_id:
+                activeConversationId,
 
-              Authorization:
-                `Bearer ${token}`,
+              provider,
 
+              document_ids:
+                selectedDocumentIds,
             },
-
-            body:
-              JSON.stringify({
-
-                question:
-                  cleanQuestion,
-
-                provider,
-
-                conversation_id:
-                  activeConversationId,
-
-                document_ids:
-                  selectedDocumentIds.length > 0
-                    ? selectedDocumentIds
-                    : null,
-
-              }),
-
           }
-
         );
 
 
@@ -568,18 +640,14 @@ export default function AIChat() {
 
         const chunk =
           decoder.decode(
-
             value,
-
             {
               stream: true,
             }
-
           );
 
 
-        completeAnswer +=
-          chunk;
+        completeAnswer += chunk;
 
 
         setMessages(
@@ -592,21 +660,15 @@ export default function AIChat() {
             updated[
               assistantIndex
             ] = {
-
-              role:
-                "assistant",
-
+              role: "assistant",
               content:
                 completeAnswer,
-
             };
 
 
             return updated;
-
           }
         );
-
       }
 
 
@@ -631,27 +693,23 @@ export default function AIChat() {
           updated[
             assistantIndex
           ] = {
-
-            role:
-              "assistant",
+            role: "assistant",
 
             content:
               "Something went wrong while getting the AI response.",
-
           };
 
 
           return updated;
-
         }
       );
+
 
     } finally {
 
       setLoading(false);
 
     }
-
   }
 
 
@@ -792,59 +850,186 @@ export default function AIChat() {
                 >
 
 
-                  <button
-
-                    disabled={
-                      loading
-                    }
-
-                    onClick={() =>
-
-                      setConversationId(
-                        conversation.id
-                      )
-
-                    }
-
+                  <div
                     className="
-            flex-1
-            min-w-0
+    flex-1
+    min-w-0
+  "
+                  >
+
+                    {
+                      editingConversationId
+                        === conversation.id
+                        ? (
+
+                          <div
+                            className="
+            flex
+            flex-col
+            gap-2
+          "
+                          >
+
+                            <input
+                              autoFocus
+
+                              value={
+                                editingTitle
+                              }
+
+                              onChange={(e) =>
+                                setEditingTitle(
+                                  e.target.value
+                                )
+                              }
+
+                              onKeyDown={(e) => {
+
+                                if (
+                                  e.key === "Enter"
+                                ) {
+
+                                  saveConversationTitle(
+                                    conversation.id
+                                  );
+
+                                }
+
+
+                                if (
+                                  e.key === "Escape"
+                                ) {
+
+                                  cancelRenaming();
+
+                                }
+
+                              }}
+
+                              className="
+              border
+              rounded
+              px-2
+              py-1
+              text-sm
+              w-full
+            "
+                            />
+
+
+                            <div
+                              className="
+              flex
+              gap-2
+            "
+                            >
+
+                              <button
+                                type="button"
+
+                                onClick={() =>
+                                  saveConversationTitle(
+                                    conversation.id
+                                  )
+                                }
+
+                                className="
+                text-xs
+                border
+                rounded
+                px-2
+                py-1
+              "
+                              >
+                                Save
+                              </button>
+
+
+                              <button
+                                type="button"
+
+                                onClick={
+                                  cancelRenaming
+                                }
+
+                                className="
+                text-xs
+                border
+                rounded
+                px-2
+                py-1
+              "
+                              >
+                                Cancel
+                              </button>
+
+                            </div>
+
+                          </div>
+
+                        )
+                        : (
+
+                          <button
+
+                            disabled={
+                              loading
+                            }
+
+                            onClick={() =>
+                              setConversationId(
+                                conversation.id
+                              )
+                            }
+
+                            onDoubleClick={() =>
+                              startRenaming(
+                                conversation
+                              )
+                            }
+
+                            className="
+            w-full
             text-left
             p-1
             disabled:opacity-50
           "
-                  >
+                          >
 
-
-                    <div
-                      className="
+                            <div
+                              className="
               font-medium
               truncate
             "
-                    >
+                            >
 
-                      {
-                        conversation.title
-                      }
+                              {
+                                conversation.title
+                              }
 
-                    </div>
+                            </div>
 
 
-                    <div
-                      className="
+                            <div
+                              className="
               text-xs
               text-gray-500
               mt-1
             "
-                    >
+                            >
 
-                      {
-                        conversation.provider
-                      }
+                              {
+                                conversation.provider
+                              }
 
-                    </div>
+                            </div>
 
-                  </button>
+                          </button>
+
+                        )
+                    }
+
+                  </div>
 
 
                   <button
