@@ -154,6 +154,8 @@ class MemoryService:
 
         content: str,
 
+        sources: list[dict] | None = None,
+
     ):
 
         message = ChatMessage(
@@ -164,6 +166,8 @@ class MemoryService:
             role=role,
 
             content=content,
+
+            sources=sources,
 
         )
 
@@ -217,22 +221,28 @@ class MemoryService:
 
         return [
 
-            {
+        {
 
-                "id": message.id,
+            "id":
+                message.id,
 
-                "role": message.role,
+            "role":
+                message.role,
 
-                "content": message.content,
+            "content":
+                message.content,
 
-                "created_at":
-                    message.created_at,
+            "sources":
+                message.sources or [],
 
-            }
+            "created_at":
+                message.created_at,
 
-            for message in messages
+        }
 
-        ]
+        for message in messages
+
+    ]
 
 
     def update_title_from_question(

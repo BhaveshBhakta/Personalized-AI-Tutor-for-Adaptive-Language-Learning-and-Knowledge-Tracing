@@ -1,5 +1,5 @@
 from typing import Generator
-
+import json
 from sqlalchemy.orm import Session
 
 from app.services.llm_service import (
@@ -17,7 +17,6 @@ from app.services.prompt_builder import (
 from app.services.retriever import (
     Retriever,
 )
-
 
 class AIOrchestrator:
 
@@ -376,6 +375,8 @@ For German grammar:
 
             content=answer,
 
+            sources=sources,
+
         )
 
 
@@ -453,6 +454,8 @@ For German grammar:
 
         complete_answer = ""
 
+        completed = False
+
 
         try:
 
@@ -466,42 +469,72 @@ For German grammar:
 
                 complete_answer += chunk
 
-                yield chunk
+
+                event = {
+
+                    "type":
+                        "token",
+
+                    "content":
+                        chunk,
+
+                }
+
+
+                yield (
+                    json.dumps(
+                        event
+                    )
+                    + "\n"
+                )
+
+
+            completed = True
 
 
             if sources:
 
-                source_names = [
+                source_event = {
 
-                    source["filename"]
+                    "type":
+                        "sources",
 
-                    for source in sources
+                    "sources":
+                        sources,
 
-                ]
+                }
 
 
-                source_text = (
-
-                    "\n\n---\n\n"
-                    "**Sources:** "
-                    + ", ".join(
-                        source_names
+                yield (
+                    json.dumps(
+                        source_event
                     )
-
+                    + "\n"
                 )
 
 
-                complete_answer += (
-                    source_text
+            done_event = {
+
+                "type":
+                    "done",
+
+            }
+
+
+            yield (
+                json.dumps(
+                    done_event
                 )
-
-
-                yield source_text
+                + "\n"
+            )
 
 
         finally:
 
-            if complete_answer.strip():
+            if (
+                completed
+                and complete_answer.strip()
+            ):
 
                 self.memory.add_message(
 
@@ -514,5 +547,8 @@ For German grammar:
 
                     content=
                         complete_answer,
+
+                    sources=
+                        sources,
 
                 )

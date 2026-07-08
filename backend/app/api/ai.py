@@ -230,7 +230,7 @@ def ask_ai(
         user_id=user_id,
         conversation_id=conversation.id,
         question=data.question,
-        provider=data.provider,
+        provider=conversation.provider,
         document_ids=data.document_ids,
     )
 
@@ -290,10 +290,10 @@ def stream_ai(
             user_id=user_id,
             conversation_id=conversation.id,
             question=data.question,
-            provider=data.provider,
+            provider=conversation.provider,
             document_ids=data.document_ids,
         ),
-        media_type="text/plain",
+        media_type="application/x-ndjson",
     )
 
     response.headers["X-Conversation-ID"] = str(

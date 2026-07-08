@@ -26,11 +26,10 @@ class Retriever:
 
         top_k: int = 5,
 
-    ):
+    ) -> str:
 
-        results = (
-
-            self.vector_store.search(
+        retrieval = (
+            self.retrieve_with_sources(
 
                 query=query,
 
@@ -42,146 +41,12 @@ class Retriever:
                 top_k=top_k,
 
             )
-
         )
 
 
-        documents = results.get(
-            "documents",
-            [[]],
-        )[0]
-
-
-        metadatas = results.get(
-            "metadatas",
-            [[]],
-        )[0]
-
-
-        distances = results.get(
-            "distances",
-            [[]],
-        )[0]
-
-
-        chunks = []
-
-
-        for index, content in enumerate(
-            documents
-        ):
-
-            metadata = (
-
-                metadatas[index]
-                if index < len(metadatas)
-                else {}
-
-            )
-
-
-            distance = (
-
-                distances[index]
-                if index < len(distances)
-                else None
-
-            )
-
-
-            chunks.append({
-
-                "content":
-                    content,
-
-                "document_id":
-                    metadata.get(
-                        "document_id"
-                    ),
-
-                "filename":
-                    metadata.get(
-                        "filename"
-                    ),
-
-                "chunk_index":
-                    metadata.get(
-                        "chunk_index"
-                    ),
-
-                "distance":
-                    distance,
-
-            })
-
-
-        return chunks
-
-
-    def retrieve_context(
-
-        self,
-
-        query: str,
-
-        user_id: int,
-
-        document_ids:
-            list[int] | None = None,
-
-        top_k: int = 5,
-
-    ) -> str:
-
-        chunks = self.retrieve(
-
-            query=query,
-
-            user_id=user_id,
-
-            document_ids=
-                document_ids,
-
-            top_k=top_k,
-
-        )
-
-
-        context_parts = []
-
-
-        for chunk in chunks:
-
-            source = (
-
-                chunk.get("filename")
-                or "Unknown document"
-
-            )
-
-
-            chunk_index = (
-                chunk.get(
-                    "chunk_index"
-                )
-            )
-
-
-            context_parts.append(
-
-                f"""
-[SOURCE: {source}]
-[CHUNK: {chunk_index}]
-
-{chunk["content"]}
-""".strip()
-
-            )
-
-
-        return "\n\n---\n\n".join(
-            context_parts
-        )
+        return retrieval[
+            "context"
+        ]
 
 
     def retrieve_with_sources(
@@ -197,19 +62,66 @@ class Retriever:
 
         top_k: int = 5,
 
-    ):
+    ) -> dict:
 
-        chunks = self.retrieve(
+        results = (
+            self.vector_store.search(
 
-            query=query,
+                query=query,
 
-            user_id=user_id,
+                user_id=user_id,
 
-            document_ids=
-                document_ids,
+                document_ids=
+                    document_ids,
 
-            top_k=top_k,
+                top_k=top_k,
 
+            )
+        )
+
+
+        documents = (
+            results.get(
+                "documents"
+            )
+            or [[]]
+        )
+
+
+        metadatas = (
+            results.get(
+                "metadatas"
+            )
+            or [[]]
+        )
+
+
+        distances = (
+            results.get(
+                "distances"
+            )
+            or [[]]
+        )
+
+
+        document_list = (
+            documents[0]
+            if documents
+            else []
+        )
+
+
+        metadata_list = (
+            metadatas[0]
+            if metadatas
+            else []
+        )
+
+
+        distance_list = (
+            distances[0]
+            if distances
+            else []
         )
 
 
@@ -217,61 +129,113 @@ class Retriever:
 
         sources = []
 
-        seen_sources = set()
+
+        for index, text in enumerate(
+            document_list
+        ):
+
+            metadata = (
+
+                metadata_list[index]
+
+                if index
+                < len(metadata_list)
+
+                else {}
+
+            )
 
 
-        for chunk in chunks:
+            distance = (
+
+                distance_list[index]
+
+                if index
+                < len(distance_list)
+
+                else None
+
+            )
+
+
+            document_id = (
+                metadata.get(
+                    "document_id"
+                )
+            )
+
 
             filename = (
+                metadata.get(
+                    "filename",
+                    "Unknown document",
+                )
+            )
 
-                chunk.get("filename")
-                or "Unknown document"
 
+            chunk_index = (
+                metadata.get(
+                    "chunk_index"
+                )
             )
 
 
             context_parts.append(
 
-                f"""
-[SOURCE: {filename}]
-[CHUNK: {chunk.get("chunk_index")}]
-
-{chunk["content"]}
-""".strip()
+                (
+                    f"[SOURCE {index + 1}]\n"
+                    f"Filename: {filename}\n"
+                    f"Document ID: {document_id}\n"
+                    f"Chunk: {chunk_index}\n\n"
+                    f"{text}\n"
+                    f"[END SOURCE {index + 1}]"
+                )
 
             )
 
 
-            if filename not in seen_sources:
+            source = {
 
-                seen_sources.add(
-                    filename
+                "document_id":
+                    document_id,
+
+                "filename":
+                    filename,
+
+                "chunk_index":
+                    chunk_index,
+
+                "text":
+                    text,
+
+            }
+
+
+            if distance is not None:
+
+                source[
+                    "distance"
+                ] = float(
+                    distance
                 )
 
-                sources.append({
 
-                    "document_id":
-                        chunk.get(
-                            "document_id"
-                        ),
+            sources.append(
+                source
+            )
 
-                    "filename":
-                        filename,
 
-                })
+        context = "\n\n".join(
+            context_parts
+        )
 
 
         return {
 
             "context":
-                "\n\n---\n\n".join(
-                    context_parts
-                ),
+                context,
 
             "sources":
                 sources,
-
-            "chunks":
-                chunks,
 
         }

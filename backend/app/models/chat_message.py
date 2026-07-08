@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import (
     DateTime,
     ForeignKey,
+    JSON,
     String,
     Text,
 )
@@ -45,6 +46,15 @@ class ChatMessage(Base):
     content: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+    )
+
+
+    sources: Mapped[
+        list[dict] | None
+    ] = mapped_column(
+        JSON,
+        nullable=True,
+        default=None,
     )
 
 
