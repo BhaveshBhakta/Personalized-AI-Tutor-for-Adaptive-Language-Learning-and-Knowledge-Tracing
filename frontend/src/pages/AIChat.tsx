@@ -15,18 +15,44 @@ import {
   authenticatedFetch,
 } from "../api/streamClient";
 
-interface Message {
+interface Source {
 
-  id?: number;
+  document_id:
+  number;
 
-  role:
-  | "user"
-  | "assistant";
+  filename:
+  string;
 
-  content: string;
+  chunk_index:
+  number | null;
+
+  text:
+  string;
+
+  distance?:
+  number;
 
 }
 
+
+interface Message {
+
+  id?:
+  number;
+
+  role:
+  "user" | "assistant";
+
+  content:
+  string;
+
+  sources?:
+  Source[];
+
+  created_at?:
+  string;
+
+}
 
 interface Conversation {
 
@@ -139,6 +165,11 @@ export default function AIChat() {
           res.data[0].id
         );
 
+
+        setProvider(
+          res.data[0].provider
+        );
+
       }
 
     } catch (error) {
@@ -181,35 +212,124 @@ export default function AIChat() {
 
   }
 
-
-  async function newConversation() {
+  function selectConversation(
+    conversation: Conversation
+  ) {
 
     if (loading) {
       return;
     }
 
 
-    const res = await api.post(
+    setConversationId(
+      conversation.id
+    );
 
-      "/ai/conversations",
 
-      {
-        provider,
+    setProvider(
+      conversation.provider
+    );
+
+
+    setSelectedDocumentIds(
+      []
+    );
+
+  }
+
+  function groupSourcesByDocument(
+    sources: Source[]
+  ) {
+
+    const grouped =
+      new Map<
+        number,
+        {
+          document_id: number;
+          filename: string;
+          chunks: Source[];
+        }
+      >();
+
+
+    for (
+      const source of sources
+    ) {
+
+      const existing =
+        grouped.get(
+          source.document_id
+        );
+
+
+      if (existing) {
+
+        existing.chunks.push(
+          source
+        );
+
+      } else {
+
+        grouped.set(
+
+          source.document_id,
+
+          {
+
+            document_id:
+              source.document_id,
+
+            filename:
+              source.filename,
+
+            chunks: [
+              source
+            ],
+
+          }
+
+        );
+
       }
 
+    }
+
+
+    return Array.from(
+      grouped.values()
     );
 
+  }
 
-    setMessages([]);
+  function newConversation() {
 
+    if (loading) {
+      return;
+    }
 
     setConversationId(
-      res.data.id
+      null
     );
 
+    setMessages(
+      []
+    );
 
-    await loadConversations();
+    setQuestion(
+      ""
+    );
 
+    setSelectedDocumentIds(
+      []
+    );
+
+    setEditingConversationId(
+      null
+    );
+
+    setEditingTitle(
+      ""
+    );
   }
 
   async function createConversationForMessage() {
@@ -235,6 +355,10 @@ export default function AIChat() {
 
     setConversationId(
       newId
+    );
+
+    setProvider(
+      res.data.provider
     );
 
 
@@ -417,16 +541,38 @@ export default function AIChat() {
           remainingConversations.length > 0
         ) {
 
+          const nextConversation =
+            remainingConversations[0];
+
+
           setConversationId(
+            nextConversation.id
+          );
 
-            remainingConversations[0].id
 
+          setProvider(
+            nextConversation.provider
+          );
+
+
+          setSelectedDocumentIds(
+            []
           );
 
         } else {
 
           setConversationId(
             null
+          );
+
+
+          setMessages(
+            []
+          );
+
+
+          setSelectedDocumentIds(
+            []
           );
 
         }
@@ -622,7 +768,12 @@ export default function AIChat() {
         new TextDecoder();
 
 
+      let buffer = "";
+
       let completeAnswer = "";
+
+      let answerSources:
+        Source[] = [];
 
 
       while (true) {
@@ -634,11 +785,16 @@ export default function AIChat() {
 
 
         if (done) {
+
+          buffer +=
+            decoder.decode();
+
           break;
+
         }
 
 
-        const chunk =
+        buffer +=
           decoder.decode(
             value,
             {
@@ -647,28 +803,205 @@ export default function AIChat() {
           );
 
 
-        completeAnswer += chunk;
+        const lines =
+          buffer.split("\n");
 
 
-        setMessages(
-          (prev) => {
-
-            const updated =
-              [...prev];
+        buffer =
+          lines.pop() || "";
 
 
-            updated[
-              assistantIndex
-            ] = {
-              role: "assistant",
-              content:
-                completeAnswer,
-            };
+        for (
+          const line of lines
+        ) {
+
+          const cleanLine =
+            line.trim();
 
 
-            return updated;
+          if (!cleanLine) {
+            continue;
           }
-        );
+
+
+          try {
+
+            const event =
+              JSON.parse(
+                cleanLine
+              );
+
+
+            if (
+              event.type
+              === "token"
+            ) {
+
+              completeAnswer +=
+                event.content;
+
+
+              setMessages(
+                (prev) => {
+
+                  const updated =
+                    [...prev];
+
+
+                  updated[
+                    assistantIndex
+                  ] = {
+
+                    role:
+                      "assistant",
+
+                    content:
+                      completeAnswer,
+
+                    sources:
+                      answerSources,
+
+                  };
+
+
+                  return updated;
+
+                }
+              );
+
+            }
+
+
+            if (
+              event.type
+              === "sources"
+            ) {
+
+              answerSources =
+                event.sources || [];
+
+
+              setMessages(
+                (prev) => {
+
+                  const updated =
+                    [...prev];
+
+
+                  updated[
+                    assistantIndex
+                  ] = {
+
+                    role:
+                      "assistant",
+
+                    content:
+                      completeAnswer,
+
+                    sources:
+                      answerSources,
+
+                  };
+
+
+                  return updated;
+
+                }
+              );
+
+            }
+
+          } catch (error) {
+
+            console.error(
+              "Invalid stream event:",
+              cleanLine,
+              error
+            );
+
+          }
+
+        }
+
+      }
+
+
+      // Process any final NDJSON event
+      // left in the buffer after the stream ends.
+
+      if (
+        buffer.trim()
+      ) {
+
+        try {
+
+          const event =
+            JSON.parse(
+              buffer.trim()
+            );
+
+
+          if (
+            event.type
+            === "token"
+          ) {
+
+            completeAnswer +=
+              event.content;
+
+          }
+
+
+          if (
+            event.type
+            === "sources"
+          ) {
+
+            answerSources =
+              event.sources || [];
+
+          }
+
+
+          setMessages(
+            (prev) => {
+
+              const updated =
+                [...prev];
+
+
+              updated[
+                assistantIndex
+              ] = {
+
+                role:
+                  "assistant",
+
+                content:
+                  completeAnswer,
+
+                sources:
+                  answerSources,
+
+              };
+
+
+              return updated;
+
+            }
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            "Invalid final stream event:",
+            buffer,
+            error
+          );
+
+        }
+
       }
 
 
@@ -977,8 +1310,8 @@ export default function AIChat() {
                             }
 
                             onClick={() =>
-                              setConversationId(
-                                conversation.id
+                              selectConversation(
+                                conversation
                               )
                             }
 
@@ -1125,29 +1458,27 @@ export default function AIChat() {
 
 
           <select
-
             value={
               provider
             }
 
             disabled={
               loading
+              || conversationId !== null
             }
 
             onChange={(e) =>
-
               setProvider(
                 e.target.value
               )
-
             }
 
             className="
-              border
-              rounded-lg
-              p-2
-              disabled:opacity-50
-            "
+    border
+    rounded-lg
+    p-2
+    disabled:opacity-50
+  "
           >
 
             <option value="groq">
@@ -1326,23 +1657,205 @@ export default function AIChat() {
             messages.map(
               (msg, index) => (
 
-                <ChatBubble
-
+                <div
                   key={
                     msg.id
                     ?? index
                   }
+                >
 
-                  role={
-                    msg.role
+                  <ChatBubble
+
+                    role={
+                      msg.role
+                    }
+
+                    content={
+                      msg.content
+                      || "..."
+                    }
+
+                  />
+
+
+                  {
+                    msg.role ===
+                    "assistant"
+                    &&
+                    msg.sources
+                    &&
+                    msg.sources.length > 0
+                    && (
+
+                      <div
+                        className="
+                mt-3
+                ml-2
+                border-t
+                pt-3
+              "
+                      >
+
+                        <div
+                          className="
+                  text-xs
+                  font-semibold
+                  uppercase
+                  tracking-wide
+                  text-gray-500
+                  mb-2
+                "
+                        >
+                          Sources
+                        </div>
+
+
+                        <div
+                          className="
+                  flex
+                  flex-col
+                  gap-2
+                "
+                        >
+
+                          {
+                            groupSourcesByDocument(
+                              msg.sources
+                            ).map(
+                              (document) => (
+
+                                <details
+
+                                  key={
+                                    document.document_id
+                                  }
+
+                                  className="
+          border
+          rounded-lg
+          p-3
+        "
+                                >
+
+                                  <summary
+                                    className="
+            cursor-pointer
+            font-medium
+            text-sm
+          "
+                                  >
+
+                                    📄 {
+                                      document.filename
+                                    }
+
+                                    <span
+                                      className="
+              ml-2
+              text-xs
+              text-gray-500
+            "
+                                    >
+
+                                      {
+                                        document.chunks.length
+                                      }
+
+                                      {
+                                        document.chunks.length === 1
+                                          ? " relevant passage"
+                                          : " relevant passages"
+                                      }
+
+                                    </span>
+
+                                  </summary>
+
+
+                                  <div
+                                    className="
+            mt-3
+            flex
+            flex-col
+            gap-3
+          "
+                                  >
+
+                                    {
+                                      document.chunks.map(
+                                        (
+                                          source,
+                                          index
+                                        ) => (
+
+                                          <div
+
+                                            key={
+                                              `${source.chunk_index}-${index}`
+                                            }
+
+                                            className="
+                    border-t
+                    pt-3
+                    first:border-t-0
+                    first:pt-0
+                  "
+                                          >
+
+                                            <div
+                                              className="
+                      text-xs
+                      font-medium
+                      text-gray-500
+                      mb-1
+                    "
+                                            >
+
+                                              {
+                                                source.chunk_index !== null
+                                                  ? `Chunk ${source.chunk_index}`
+                                                  : "Retrieved passage"
+                                              }
+
+                                            </div>
+
+
+                                            <div
+                                              className="
+                      text-sm
+                      text-gray-600
+                      whitespace-pre-wrap
+                    "
+                                            >
+
+                                              {
+                                                source.text
+                                              }
+
+                                            </div>
+
+                                          </div>
+
+                                        )
+                                      )
+                                    }
+
+                                  </div>
+
+                                </details>
+
+                              )
+                            )
+                          }
+
+                        </div>
+
+                      </div>
+
+                    )
                   }
 
-                  content={
-                    msg.content
-                    || "..."
-                  }
-
-                />
+                </div>
 
               )
             )

@@ -67,6 +67,18 @@ class AIOrchestrator:
 
                     top_k=5,
 
+                    max_distance=
+                        YOUR_TESTED_THRESHOLD,
+
+                    max_context_chars=
+                        12000,
+
+                    max_chunks_per_document=
+                        3,
+
+                    overlap_threshold=
+                        0.85,
+
                 )
 
             )
@@ -82,12 +94,31 @@ class AIOrchestrator:
             ]
 
 
+            has_evidence = retrieval.get(
+
+                "has_evidence",
+
+                False,
+
+            )
+
+
+            best_distance = retrieval.get(
+
+                "best_distance"
+
+            )
+
+
         else:
 
             context = ""
 
             sources = []
 
+            has_evidence = False
+
+            best_distance = None
 
         history = (
 
@@ -175,35 +206,92 @@ class AIOrchestrator:
             document_ids
         )
 
+        evidence_available = (
 
-        if document_mode:
+            document_mode
+
+            and has_evidence
+
+        )
+
+
+        if (
+            document_mode
+            and evidence_available
+        ):
 
             grounding_instruction = """
-DOCUMENT MODE IS ACTIVE.
+        DOCUMENT MODE IS ACTIVE.
 
-The learner selected one or more uploaded documents.
+        The learner selected one or more uploaded documents,
+        and retrieved document evidence is available.
 
-Rules:
-1. Use the retrieved document context as the primary factual source.
-2. Do not claim that a document says something unless it appears in the retrieved context.
-3. When using information from a document, mention the source filename naturally.
-4. If the selected documents do not contain enough information, clearly say so.
-5. Conversation history is still authoritative for references such as:
-   "those examples", "that sentence", "explain it again", and similar follow-ups.
-"""
+        Rules:
+
+        1. Use the retrieved document context as the primary factual source
+        for claims about the selected documents.
+
+        2. Do not claim that a document says something unless that claim is
+        supported by the retrieved context.
+
+        3. Do not add a manual Sources section to the answer.
+        Sources are displayed separately by the interface.
+
+        4. If the retrieved evidence only partially answers the question,
+        clearly separate:
+        - what the documents support;
+        - what is general knowledge.
+
+        5. Conversation history remains authoritative for conversational
+        references such as:
+        "those examples",
+        "the second one",
+        "that sentence",
+        and similar follow-up references.
+        """
+
+
+        elif (
+            document_mode
+            and not evidence_available
+        ):
+
+            grounding_instruction = """
+        DOCUMENT MODE IS ACTIVE, BUT NO USABLE DOCUMENT EVIDENCE
+        WAS RETRIEVED.
+
+        Rules:
+
+        1. Do not pretend that the selected documents contain the answer.
+
+        2. Clearly state that the available document evidence does not
+        provide enough information to answer from the selected documents.
+
+        3. If useful, you may provide a separate general explanation,
+        but clearly label it as general knowledge rather than information
+        from the selected documents.
+
+        4. Do not invent document claims, quotations, page references,
+        filenames, or citations.
+
+        5. Do not add a manual Sources section.
+        """
+
 
         else:
 
             grounding_instruction = """
-GENERAL TUTOR MODE IS ACTIVE.
+        GENERAL TUTOR MODE IS ACTIVE.
 
-Answer as an expert German language tutor.
+        Answer as an expert German language tutor.
 
-Retrieved document context may be empty or unrelated.
-Do not force document information into the answer when it is not relevant.
-"""
+        Do not claim to use uploaded documents because no document mode
+        is active.
 
-
+        Use conversation history to resolve follow-up references and preserve
+        the learner's current topic.
+        """
+            
         final_prompt = f"""
 You are an adaptive German language tutor.
 
@@ -235,22 +323,16 @@ IMPORTANT CONVERSATION RULES:
    exchange does not contain the referenced information.
 
 4. Retrieved document context is factual reference material.
-   NEVER use the structure, numbering, bullet order, or section order
-   of retrieved document context to resolve conversational references
-   such as "the second one", "the third example", or "that sentence".
+   NEVER use SOURCE numbering, chunk numbering, or document order
+   to resolve conversational references such as "the second one".
 
 5. When the learner asks to simplify, transform, compare, or explain
    previous content, preserve the subject of the immediately previous
    tutor response.
 
-6. Preserve the requested number of examples or items when transforming
-   earlier content.
+6. Do not invent document claims.
 
-7. Do not invent a different previous answer or silently switch to an
-   unrelated document section.
-
-8. Keep answers focused. Do not repeat the same sentence, correction,
-   explanation, or example multiple times.r.
+7. Keep the answer focused and avoid unnecessary repetition.
 
 FULL CONVERSATION HISTORY:
 
