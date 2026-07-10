@@ -1,7 +1,6 @@
-from datetime import (
-    datetime,
-    timezone,
-)
+from datetime import datetime
+
+import math
 
 from sqlalchemy.orm import Session
 
@@ -17,7 +16,6 @@ from app.services.skill_mapping_service import (
     SkillMappingService,
 )
 
-import math
 
 class KnowledgeTracingService:
 
@@ -56,11 +54,14 @@ class KnowledgeTracingService:
 
 
         weight = max(
+
             0.1,
+
             min(
                 evidence_weight,
                 2.0,
             ),
+
         )
 
 
@@ -127,6 +128,7 @@ class KnowledgeTracingService:
 
         )
 
+
     def apply_recency_decay(
 
         self,
@@ -154,6 +156,7 @@ class KnowledgeTracingService:
                 now
                 - last_evidence_at
             ).total_seconds()
+
             / 86400.0,
 
         )
@@ -184,9 +187,12 @@ class KnowledgeTracingService:
             baseline
 
             + (
+
                 mastery
                 - baseline
+
             )
+
             * decay_factor
 
         )
@@ -203,6 +209,7 @@ class KnowledgeTracingService:
 
         )
 
+
     def calculate_topic_mastery(
 
         self,
@@ -217,6 +224,20 @@ class KnowledgeTracingService:
 
     ) -> TopicMastery:
 
+        skill = (
+
+            self.skill_mapper
+            .get_or_create_skill(
+
+                db=db,
+
+                category=category,
+
+                topic=topic,
+
+            )
+
+        )
 
         evidence = (
 
@@ -245,18 +266,19 @@ class KnowledgeTracingService:
 
         incorrect_count = 0
 
-
         chronological_evidence = list(
+
             reversed(
                 evidence
             )
-        )
 
+        )
 
         for item in chronological_evidence:
 
 
             mastery = (
+
                 self.update_probability(
 
                     current_mastery=
@@ -269,6 +291,7 @@ class KnowledgeTracingService:
                         item["weight"],
 
                 )
+
             )
 
 
@@ -276,25 +299,30 @@ class KnowledgeTracingService:
 
                 correct_count += 1
 
+
             else:
 
                 incorrect_count += 1
 
-            if evidence:
 
-                mastery = (
-                    self.apply_recency_decay(
+        if evidence:
 
-                        mastery=mastery,
+            mastery = (
 
-                        last_evidence_at=
-                            evidence[0][
-                                "created_at"
-                            ],
+                self.apply_recency_decay(
 
-                    )
+                    mastery=mastery,
+
+                    last_evidence_at=
+                        evidence[0][
+                            "created_at"
+                        ],
+
                 )
-                
+
+            )
+
+
         evidence_count = len(
             evidence
         )
@@ -334,9 +362,11 @@ class KnowledgeTracingService:
 
             mastery_record = TopicMastery(
 
-                user_id=user_id,
+                user_id=
+                    user_id,
 
-                skill_id=skill.id,
+                skill_id=
+                    skill.id,
 
                 category=
                     skill.category,
@@ -345,6 +375,7 @@ class KnowledgeTracingService:
                     skill.name,
 
             )
+
 
             db.add(
                 mastery_record
@@ -391,8 +422,8 @@ class KnowledgeTracingService:
             datetime.utcnow()
         )
 
-
         db.commit()
+
 
         db.refresh(
             mastery_record

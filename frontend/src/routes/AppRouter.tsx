@@ -21,7 +21,6 @@ import VocabularyIntelligence from "../pages/VocabularyIntelligence";
 import AIChat from "../pages/AIChat";
 import Documents from "../pages/Documents";
 import AdaptivePractice from "../pages/AdaptivePractice";
-
 export default function AppRouter() {
 
   return (
@@ -153,7 +152,7 @@ export default function AppRouter() {
                   />
 
                   <Route
-                    path="/practice"
+                    path="/adaptive-practice"
                     element={
                       <AdaptivePractice />
                     }

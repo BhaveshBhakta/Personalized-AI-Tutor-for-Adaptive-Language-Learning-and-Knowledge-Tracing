@@ -1,21 +1,27 @@
 import json
+import uuid
 
 from sqlalchemy.orm import Session
-from app.models.adaptive_exercise import (AdaptiveExercise,)
-from app.services.learner_state_service import (LearnerStateService,)
-from app.services.llm_service import (LLMService,)
-from app.services.difficulty_service import (DifficultyService,)
+
+from app.models.adaptive_exercise import (
+    AdaptiveExercise,
+)
+
+from app.services.learner_state_service import (
+    LearnerStateService,
+)
+
+from app.services.practice_queue_service import (
+    PracticeQueueService,
+)
+
+from app.services.llm_service import (
+    LLMService,
+)
+
 
 class AdaptiveExerciseService:
 
-    ALLOWED_TYPES = {
-
-        "multiple_choice",
-        "fill_blank",
-        "translation",
-        "correction",
-
-    }
 
     def __init__(self):
 
@@ -23,125 +29,182 @@ class AdaptiveExerciseService:
             LearnerStateService()
         )
 
+        self.practice_queue = (
+            PracticeQueueService()
+        )
+
         self.llm = (
             LLMService()
         )
 
-        self.difficulty_service = (
-            DifficultyService()
-        )
 
-    def select_target(
+    def _choose_difficulty(
 
         self,
 
-        db: Session,
+        mastery_probability: float,
 
-        user_id: int,
+        confidence: float,
+
+    ) -> int:
+
+
+        if confidence < 0.30:
+
+            return 2
+
+
+        if mastery_probability < 0.25:
+
+            return 1
+
+
+        if mastery_probability < 0.45:
+
+            return 2
+
+
+        if mastery_probability < 0.65:
+
+            return 3
+
+
+        if mastery_probability < 0.80:
+
+            return 4
+
+
+        return 5
+
+
+    def _find_mastery(
+
+        self,
+
+        state: dict,
+
+        category: str,
+
+        topic: str,
+
+    ) -> tuple[float, float]:
+
+
+        normalized_category = (
+            category
+            .strip()
+            .lower()
+        )
+
+
+        normalized_topic = (
+            topic
+            .strip()
+            .lower()
+        )
+
+
+        for item in state.get(
+
+            "topic_mastery",
+
+            [],
+
+        ):
+
+
+            item_category = (
+
+                item["category"]
+                .strip()
+                .lower()
+
+            )
+
+
+            item_topic = (
+
+                item["topic"]
+                .strip()
+                .lower()
+
+            )
+
+
+            if (
+
+                item_category
+                == normalized_category
+
+                and item_topic
+                == normalized_topic
+
+            ):
+
+                return (
+
+                    float(
+                        item[
+                            "mastery_probability"
+                        ]
+                    ),
+
+                    float(
+                        item[
+                            "confidence"
+                        ]
+                    ),
+
+                )
+
+
+        return (
+            0.50,
+            0.0,
+        )
+
+
+    def _clean_json_response(
+
+        self,
+
+        raw_response: str,
 
     ) -> dict:
 
-        state = (
 
-            self.learner_state
-            .get_state(
-
-                db=db,
-                user_id=user_id,
-
-            )
+        cleaned = (
+            raw_response.strip()
         )
 
-        recurring_weaknesses = state.get(
-            "recurring_weaknesses",
-            [],
+
+        if cleaned.startswith(
+            "```json"
+        ):
+
+            cleaned = cleaned[7:]
+
+
+        elif cleaned.startswith(
+            "```"
+        ):
+
+            cleaned = cleaned[3:]
+
+
+        if cleaned.endswith(
+            "```"
+        ):
+
+            cleaned = cleaned[:-3]
+
+
+        return json.loads(
+            cleaned.strip()
         )
 
-        weak_grammar = state.get(
-            "weak_grammar",
-            [],
-        )
 
-        weak_vocabulary = state.get(
-            "weak_vocabulary",
-            [],
-        )
-
-        if recurring_weaknesses:
-
-            weakness = (
-                recurring_weaknesses[0]
-            )
-
-            return {
-
-                "category":
-                    weakness["category"],
-
-                "topic":
-                    weakness["topic"],
-
-                "reason":
-                    "recurring_learning_difficulty",
-
-            }
-
-        if weak_grammar:
-
-            grammar = weak_grammar[0]
-
-            return {
-
-                "category":
-                    "grammar",
-
-                "topic":
-                    grammar.get(
-                        "title",
-                        grammar.get(
-                            "topic",
-                            "German grammar",
-                        ),
-                    ),
-
-                "reason":
-                    "low_grammar_mastery",
-
-            }
-
-        if weak_vocabulary:
-
-            vocabulary = (
-                weak_vocabulary[0]
-            )
-
-            return {
-
-                "category":
-                    "vocabulary",
-
-                "topic":
-                    vocabulary["word"],
-
-                "reason":
-                    "low_vocabulary_mastery",
-
-            }
-
-        return {
-
-            "category":
-                "general",
-
-            "topic":
-                "A1 German fundamentals",
-
-            "reason":
-                "general_practice",
-
-        }
-
-    def generate(
+    def generate_exercise(
 
         self,
 
@@ -149,13 +212,26 @@ class AdaptiveExerciseService:
 
         user_id: int,
 
-        exercise_type: str | None = None,
-
         provider: str = "groq",
 
-        target_override: dict | None = None,
+    ) -> dict:
 
-    ) -> AdaptiveExercise:
+
+        queue = (
+
+            self.practice_queue
+            .build_queue(
+
+                db=db,
+
+                user_id=user_id,
+
+                limit=5,
+
+            )
+
+        )
+
 
         state = (
 
@@ -163,20 +239,6 @@ class AdaptiveExerciseService:
             .get_state(
 
                 db=db,
-                user_id=user_id,
-
-            )
-        )
-
-        target = (
-
-            target_override
-
-            if target_override
-
-            else self.select_target(
-
-                db=db,
 
                 user_id=user_id,
 
@@ -184,179 +246,304 @@ class AdaptiveExerciseService:
 
         )
 
-        profile = state.get(
-            "profile",
-            {},
+
+        if queue:
+
+            target = queue[0]
+
+            category = target[
+                "category"
+            ]
+
+            topic = target[
+                "topic"
+            ]
+
+
+        else:
+
+            category = "general"
+
+            topic = "German A1 practice"
+
+
+        (
+            mastery_probability,
+            confidence,
+        ) = self._find_mastery(
+
+            state=state,
+
+            category=category,
+
+            topic=topic,
+
         )
 
-        level = profile.get(
-            "target_level",
-            "A1",
-        )
 
-        level = (
+        difficulty = (
+            self._choose_difficulty(
 
-            self.difficulty_service
-            .get_topic_difficulty(
+                mastery_probability=
+                    mastery_probability,
 
-                db=db,
-
-                user_id=user_id,
-
-                topic=
-                    target["topic"],
-
-                default_level=
-                    level,
+                confidence=
+                    confidence,
 
             )
-
         )
 
-        selected_type = (
-
-            exercise_type
-            if exercise_type
-            in self.ALLOWED_TYPES
-            else "fill_blank"
-
-        )
 
         prompt = f"""
-You generate one German language learning exercise.
+You generate adaptive German learning exercises.
 
-Learner level:
-{level}
+Create exactly ONE exercise.
 
-Target category:
-{target["category"]}
+TARGET CATEGORY:
+{category}
 
-Target topic:
-{target["topic"]}
+TARGET TOPIC:
+{topic}
 
-Exercise type:
-{selected_type}
+DIFFICULTY:
+{difficulty} out of 5
 
-Return ONLY valid JSON in exactly this structure:
+LEARNER MASTERY:
+{mastery_probability:.2f}
+
+MASTERY CONFIDENCE:
+{confidence:.2f}
+
+Allowed exercise types:
+
+- multiple_choice
+- fill_blank
+- translation
+- correction
+
+Difficulty:
+
+1 = simple recognition
+2 = basic recall
+3 = contextual application
+4 = production and deeper application
+5 = subtle advanced distinction
+
+Return valid JSON only:
 
 {{
-  "exercise_type": "{selected_type}",
-  "category": "{target["category"]}",
-  "topic": "{target["topic"]}",
-  "question": "exercise question here",
-  "expected_answer": "correct answer here",
-  "explanation": "short educational explanation"
+    "exercise_type": "multiple_choice",
+    "question": "Question text",
+    "options": [
+        {{
+            "id": "a",
+            "text": "Option A"
+        }},
+        {{
+            "id": "b",
+            "text": "Option B"
+        }},
+        {{
+            "id": "c",
+            "text": "Option C"
+        }},
+        {{
+            "id": "d",
+            "text": "Option D"
+        }}
+    ],
+    "correct_answer": "a",
+    "explanation": "Clear educational explanation",
+    "hint": "Short useful hint"
 }}
 
 Rules:
 
-1. Generate exactly one exercise.
+1. Generate only one exercise.
 
-2. Match the learner's level.
+2. The exercise must genuinely test:
+   {topic}
 
-3. Test the target topic directly.
+3. For multiple_choice:
+   correct_answer must contain the option ID.
 
-4. The expected answer must be clear enough for automatic
-   or AI-assisted evaluation.
+4. For fill_blank:
+   correct_answer must contain the missing text.
 
-5. Do not include the answer inside the question.
+5. For translation:
+   correct_answer must contain one natural correct translation.
 
-6. For fill_blank, use exactly one clear blank written as _____.
+6. For correction:
+   correct_answer must contain the corrected complete sentence.
 
-7. For translation exercises, clearly state the translation direction.
+7. For non-multiple-choice exercises:
+   options must be null.
 
-8. For correction exercises, provide one incorrect German sentence.
+8. Do not use Markdown fences.
 
-9. Keep the exercise focused on one learning objective.
-
-10. Return JSON only.
+9. Do not write anything outside the JSON.
 """
 
-        raw_response = self.llm.ask(
 
-            prompt=prompt,
-            provider=provider,
+        raw_response = (
+
+            self.llm.ask(
+
+                prompt=prompt,
+
+                provider=provider,
+
+            )
 
         )
 
-        try:
 
-            data = json.loads(
+        exercise_data = (
+            self._clean_json_response(
                 raw_response
             )
-
-        except json.JSONDecodeError as exc:
-
-            raise ValueError(
-                "Exercise generator returned invalid JSON"
-            ) from exc
+        )
 
 
-        question = str(
-            data.get(
-                "question",
-                "",
-            )
-        ).strip()
+        exercise_id = str(
+            uuid.uuid4()
+        )
 
-        expected_answer = str(
-            data.get(
-                "expected_answer",
-                "",
-            )
-        ).strip()
-
-        explanation = str(
-            data.get(
-                "explanation",
-                "",
-            )
-        ).strip()
-
-        if not question:
-
-            raise ValueError(
-                "Generated exercise has no question"
-            )
-
-        if not expected_answer:
-
-            raise ValueError(
-                "Generated exercise has no expected answer"
-            )
 
         exercise = AdaptiveExercise(
 
-            user_id=user_id,
+            exercise_id=
+                exercise_id,
 
-            exercise_type=
-                selected_type,
+            user_id=
+                user_id,
 
             category=
-                target["category"],
+                category,
 
             topic=
-                target["topic"],
+                topic,
 
-            difficulty_level=
-                level,
+            exercise_type=
+                exercise_data[
+                    "exercise_type"
+                ],
+
+            difficulty=
+                difficulty,
 
             question=
-                question,
+                exercise_data[
+                    "question"
+                ],
 
-            expected_answer=
-                expected_answer,
+            options=
+                exercise_data.get(
+                    "options"
+                ),
+
+            correct_answer=
+                str(
+                    exercise_data[
+                        "correct_answer"
+                    ]
+                ),
 
             explanation=
-                explanation,
+                exercise_data[
+                    "explanation"
+                ],
 
-            source_reason=
-                target["reason"],
+            hint=
+                exercise_data.get(
+                    "hint"
+                ),
+
+            mastery_before=
+                mastery_probability,
 
         )
 
-        db.add(exercise)
-        db.commit()
-        db.refresh(exercise)
 
-        return exercise
+        db.add(
+            exercise
+        )
+
+        db.commit()
+
+        db.refresh(
+            exercise
+        )
+
+
+        return {
+
+            "exercise_id":
+                exercise.exercise_id,
+
+            "category":
+                exercise.category,
+
+            "topic":
+                exercise.topic,
+
+            "exercise_type":
+                exercise.exercise_type,
+
+            "difficulty":
+                exercise.difficulty,
+
+            "question":
+                exercise.question,
+
+            "options":
+                exercise.options,
+
+            "hint":
+                exercise.hint,
+
+            "metadata": {
+
+                "mastery_before":
+                    exercise.mastery_before,
+
+                "confidence":
+                    confidence,
+
+            },
+
+        }
+
+
+    def get_stored_exercise(
+
+        self,
+
+        db: Session,
+
+        exercise_id: str,
+
+        user_id: int,
+
+    ) -> AdaptiveExercise | None:
+
+
+        return (
+
+            db.query(
+                AdaptiveExercise
+            )
+
+            .filter(
+
+                AdaptiveExercise.exercise_id
+                == exercise_id,
+
+                AdaptiveExercise.user_id
+                == user_id,
+
+            )
+
+            .first()
+
+        )

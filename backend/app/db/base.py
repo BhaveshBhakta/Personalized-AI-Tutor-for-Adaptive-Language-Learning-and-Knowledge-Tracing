@@ -18,3 +18,5 @@ from app.models.exercise_attempt import (ExerciseAttempt,)
 from app.models.topic_mastery import (TopicMastery,)
 from app.models.skill import Skill
 from app.models.skill_alias import SkillAlias
+from app.models.adaptive_exercise import (AdaptiveExercise,)
+from app.models.exercise_attempt import (ExerciseAttempt,)

@@ -7,52 +7,81 @@ import {
 } from "../api/client";
 
 
+type ExerciseOption = {
+  id: string;
+  text: string;
+};
+
+
 type Exercise = {
 
-  id: number;
-
-  exercise_type: string;
+  exercise_id: string;
 
   category: string;
 
   topic: string;
 
-  difficulty_level: string;
+  exercise_type: string;
+
+  difficulty: number;
 
   question: string;
 
-  source_reason: string;
+  options:
+    ExerciseOption[] | null;
+
+  hint:
+    string | null;
+
+  metadata: {
+
+    mastery_before:
+      number;
+
+    confidence:
+      number;
+
+  };
 
 };
 
 
-type Result = {
+type AnswerResult = {
+
+  exercise_id: string;
 
   is_correct: boolean;
 
   score: number;
 
-  feedback: string;
-
-  expected_answer: string;
+  correct_answer: string;
 
   explanation: string;
+
+  category: string;
+
+  topic: string;
+
+  difficulty: number;
+
+  attempt_number: number;
+
+  grading_method: string;
+
+  next_action: string;
 
 };
 
 
 export default function AdaptivePractice() {
 
-  const [
-    exercises,
-    setExercises,
-  ] = useState<Exercise[]>([]);
-
 
   const [
-    currentIndex,
-    setCurrentIndex,
-  ] = useState(0);
+    exercise,
+    setExercise,
+  ] = useState<
+    Exercise | null
+  >(null);
 
 
   const [
@@ -64,9 +93,9 @@ export default function AdaptivePractice() {
   const [
     result,
     setResult,
-  ] = useState<Result | null>(
-    null
-  );
+  ] = useState<
+    AnswerResult | null
+  >(null);
 
 
   const [
@@ -75,49 +104,57 @@ export default function AdaptivePractice() {
   ] = useState(false);
 
 
-  const currentExercise =
-    exercises[currentIndex];
+  const [
+    error,
+    setError,
+  ] = useState("");
 
 
-  async function startSession() {
+  async function loadExercise() {
+
 
     setLoading(true);
 
-    setResult(null);
+    setError("");
 
     setAnswer("");
+
+    setResult(null);
 
 
     try {
 
+
       const response =
         await api.post(
-          "/exercises/session",
-          {
-            size: 5,
-            provider: "groq",
-          }
+          "/adaptive-exercises/next"
         );
 
 
-      setExercises(
-        response.data.exercises
+      setExercise(
+        response.data
       );
-
-      setCurrentIndex(0);
 
 
     } catch (error) {
 
+
       console.error(
-        "Failed to create session",
+        "Exercise generation failed",
         error
+      );
+
+
+      setError(
+        "Could not generate an exercise."
       );
 
 
     } finally {
 
+
       setLoading(false);
+
 
     }
 
@@ -126,8 +163,9 @@ export default function AdaptivePractice() {
 
   async function submitAnswer() {
 
+
     if (
-      !currentExercise
+      !exercise
       || !answer.trim()
     ) {
 
@@ -138,19 +176,24 @@ export default function AdaptivePractice() {
 
     setLoading(true);
 
+    setError("");
+
 
     try {
+
 
       const response =
         await api.post(
 
-          `/exercises/${currentExercise.id}/submit`,
+          "/adaptive-exercises/answer",
 
           {
 
-            answer,
+            exercise_id:
+              exercise.exercise_id,
 
-            provider: "groq",
+            answer:
+              answer,
 
           }
 
@@ -164,67 +207,73 @@ export default function AdaptivePractice() {
 
     } catch (error) {
 
+
       console.error(
-        "Failed to submit answer",
+        "Answer submission failed",
         error
+      );
+
+
+      setError(
+        "Could not grade the answer."
       );
 
 
     } finally {
 
+
       setLoading(false);
 
-    }
-
-  }
-
-
-  function nextExercise() {
-
-    setAnswer("");
-
-    setResult(null);
-
-
-    if (
-      currentIndex
-      < exercises.length - 1
-    ) {
-
-      setCurrentIndex(
-        currentIndex + 1
-      );
 
     }
 
   }
 
 
-  if (!currentExercise) {
+  return (
 
-    return (
+    <div
+      className="
+        max-w-4xl
+        mx-auto
+        space-y-6
+      "
+    >
 
-      <div className="max-w-3xl mx-auto">
 
-        <h1 className="text-3xl font-bold mb-3">
+      <div>
 
+
+        <h1
+          className="
+            text-3xl
+            font-bold
+          "
+        >
           Adaptive Practice
-
         </h1>
 
 
-        <p className="mb-6">
-
-          Practice generated from your
+        <p
+          className="
+            mt-2
+            text-gray-500
+          "
+        >
+          Exercises selected from your
           current learning weaknesses.
-
         </p>
 
+
+      </div>
+
+
+      {!exercise && (
 
         <button
 
           onClick={
-            startSession
+            loadExercise
           }
 
           disabled={
@@ -236,111 +285,254 @@ export default function AdaptivePractice() {
             rounded-lg
             px-5
             py-3
+            disabled:opacity-50
           "
 
         >
 
           {
             loading
-              ? "Preparing practice..."
-              : "Start practice session"
+              ? "Generating..."
+              : "Start Practice"
           }
 
         </button>
 
-      </div>
-
-    );
-
-  }
+      )}
 
 
-  return (
+      {error && (
 
-    <div className="max-w-3xl mx-auto">
-
-
-      <div className="mb-6">
-
-        Exercise {
-          currentIndex + 1
-        } of {
-          exercises.length
-        }
-
-      </div>
-
-
-      <div
-        className="
-          border
-          rounded-xl
-          p-6
-        "
-      >
-
-        <div className="text-sm mb-3">
-
-          {
-            currentExercise.category
-          }
-
-          {" · "}
-
-          {
-            currentExercise.topic
-          }
-
-          {" · "}
-
-          {
-            currentExercise.difficulty_level
-          }
-
-        </div>
-
-
-        <h2 className="text-xl font-semibold mb-6">
-
-          {
-            currentExercise.question
-          }
-
-        </h2>
-
-
-        <textarea
-
-          value={
-            answer
-          }
-
-          onChange={
-            (event) =>
-              setAnswer(
-                event.target.value
-              )
-          }
-
-          disabled={
-            Boolean(result)
-          }
-
+        <div
           className="
             border
             rounded-lg
-            p-3
-            w-full
-            min-h-28
+            p-4
+            text-red-500
           "
+        >
+          {error}
+        </div>
 
-          placeholder="Your answer"
-
-        />
+      )}
 
 
-        {
-          !result && (
+      {exercise && (
+
+        <div
+          className="
+            border
+            rounded-xl
+            p-6
+            space-y-5
+          "
+        >
+
+
+          <div
+            className="
+              flex
+              gap-3
+              flex-wrap
+              text-sm
+            "
+          >
+
+
+            <span
+              className="
+                border
+                rounded-full
+                px-3
+                py-1
+              "
+            >
+              {exercise.category}
+            </span>
+
+
+            <span
+              className="
+                border
+                rounded-full
+                px-3
+                py-1
+              "
+            >
+              {exercise.topic}
+            </span>
+
+
+            <span
+              className="
+                border
+                rounded-full
+                px-3
+                py-1
+              "
+            >
+              Difficulty {
+                exercise.difficulty
+              }/5
+            </span>
+
+
+          </div>
+
+
+          <h2
+            className="
+              text-xl
+              font-semibold
+            "
+          >
+            {exercise.question}
+          </h2>
+
+
+          {
+            exercise.options
+
+            ? (
+
+              <div
+                className="
+                  grid
+                  gap-3
+                "
+              >
+
+                {
+                  exercise.options.map(
+                    (option) => (
+
+                      <button
+
+                        key={
+                          option.id
+                        }
+
+                        onClick={() =>
+                          setAnswer(
+                            option.id
+                          )
+                        }
+
+                        disabled={
+                          result !== null
+                        }
+
+                        className={`
+                          border
+                          rounded-lg
+                          p-4
+                          text-left
+
+                          ${
+                            answer
+                            === option.id
+
+                              ? "ring-2"
+
+                              : ""
+                          }
+                        `}
+
+                      >
+
+                        <span
+                          className="
+                            font-semibold
+                            mr-3
+                          "
+                        >
+                          {
+                            option.id
+                              .toUpperCase()
+                          }.
+                        </span>
+
+                        {option.text}
+
+                      </button>
+
+                    )
+                  )
+                }
+
+              </div>
+
+            )
+
+            : (
+
+              <textarea
+
+                value={
+                  answer
+                }
+
+                disabled={
+                  result !== null
+                }
+
+                onChange={(event) =>
+                  setAnswer(
+                    event.target.value
+                  )
+                }
+
+                placeholder="
+                  Write your answer...
+                "
+
+                className="
+                  w-full
+                  min-h-32
+                  border
+                  rounded-lg
+                  p-4
+                "
+
+              />
+
+            )
+          }
+
+
+          {
+            exercise.hint
+            && !result
+            && (
+
+              <details>
+
+                <summary
+                  className="
+                    cursor-pointer
+                    font-medium
+                  "
+                >
+                  Show hint
+                </summary>
+
+
+                <p
+                  className="
+                    mt-2
+                    text-gray-500
+                  "
+                >
+                  {exercise.hint}
+                </p>
+
+              </details>
+
+            )
+          }
+
+
+          {!result && (
 
             <button
 
@@ -357,8 +549,8 @@ export default function AdaptivePractice() {
                 border
                 rounded-lg
                 px-5
-                py-2
-                mt-4
+                py-3
+                disabled:opacity-50
               "
 
             >
@@ -366,115 +558,152 @@ export default function AdaptivePractice() {
               {
                 loading
                   ? "Checking..."
-                  : "Submit answer"
+                  : "Check Answer"
               }
 
             </button>
 
-          )
-        }
+          )}
 
 
-        {
-          result && (
+          {result && (
 
-            <div className="mt-6">
+            <div
+              className="
+                border-t
+                pt-5
+                space-y-4
+              "
+            >
 
-              <h3 className="font-semibold">
+
+              <h3
+                className="
+                  text-xl
+                  font-semibold
+                "
+              >
 
                 {
                   result.is_correct
                     ? "Correct"
-                    : "Needs improvement"
+                    : "Needs more practice"
                 }
 
               </h3>
 
 
-              <p className="mt-2">
+              <div>
 
-                Score: {
-                  Math.round(
-                    result.score * 100
-                  )
-                }%
+                <div
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Score
+                </div>
 
-              </p>
+                <div>
+                  {
+                    Math.round(
+                      result.score
+                      * 100
+                    )
+                  }%
+                </div>
 
-
-              <p className="mt-3">
-
-                {
-                  result.feedback
-                }
-
-              </p>
-
-
-              {
-                !result.is_correct && (
-
-                  <p className="mt-3">
-
-                    Expected answer:{" "}
-
-                    <strong>
-
-                      {
-                        result.expected_answer
-                      }
-
-                    </strong>
-
-                  </p>
-
-                )
-              }
+              </div>
 
 
-              {
-                result.explanation && (
+              {!result.is_correct && (
 
-                  <p className="mt-3">
+                <div>
 
+                  <div
+                    className="
+                      text-sm
+                      font-medium
+                    "
+                  >
+                    Correct answer
+                  </div>
+
+                  <div>
                     {
-                      result.explanation
+                      result.correct_answer
                     }
+                  </div>
 
-                  </p>
+                </div>
 
-                )
-              }
+              )}
+
+
+              <div>
+
+                <div
+                  className="
+                    text-sm
+                    font-medium
+                  "
+                >
+                  Explanation
+                </div>
+
+                <p
+                  className="
+                    mt-1
+                    text-gray-600
+                  "
+                >
+                  {result.explanation}
+                </p>
+
+              </div>
 
 
               <button
 
                 onClick={
-                  nextExercise
+                  loadExercise
+                }
+
+                disabled={
+                  loading
                 }
 
                 className="
                   border
                   rounded-lg
                   px-5
-                  py-2
-                  mt-5
+                  py-3
+                  disabled:opacity-50
                 "
 
               >
 
-                Next exercise
+                {
+                  loading
+                    ? "Generating..."
+                    : "Next Exercise"
+                }
 
               </button>
 
+
             </div>
 
-          )
-        }
+          )}
 
-      </div>
+
+        </div>
+
+      )}
+
 
     </div>
 
   );
+
 }

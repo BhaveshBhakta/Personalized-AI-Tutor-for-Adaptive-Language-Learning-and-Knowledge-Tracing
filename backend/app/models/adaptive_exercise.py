@@ -2,8 +2,10 @@ from datetime import datetime
 
 from sqlalchemy import (
     DateTime,
+    Float,
     ForeignKey,
     Integer,
+    JSON,
     String,
     Text,
 )
@@ -11,7 +13,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
-    relationship,
 )
 
 from app.db.base_class import Base
@@ -27,6 +28,14 @@ class AdaptiveExercise(Base):
     )
 
 
+    exercise_id: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+
     user_id: Mapped[int] = mapped_column(
         ForeignKey(
             "users.id",
@@ -37,31 +46,28 @@ class AdaptiveExercise(Base):
     )
 
 
-    exercise_type: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        index=True,
-    )
-
-
     category: Mapped[str] = mapped_column(
-        String(50),
+        String(100),
         nullable=False,
-        index=True,
     )
 
 
     topic: Mapped[str] = mapped_column(
-        String(200),
+        String(255),
         nullable=False,
-        index=True,
     )
 
 
-    difficulty_level: Mapped[str] = mapped_column(
-        String(20),
-        default="A1",
+    exercise_type: Mapped[str] = mapped_column(
+        String(50),
         nullable=False,
+    )
+
+
+    difficulty: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=2,
     )
 
 
@@ -71,21 +77,34 @@ class AdaptiveExercise(Base):
     )
 
 
-    expected_answer: Mapped[str] = mapped_column(
+    options: Mapped[list | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+
+
+    correct_answer: Mapped[str] = mapped_column(
         Text,
         nullable=False,
     )
 
 
-    explanation: Mapped[str | None] = mapped_column(
+    explanation: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+
+    hint: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
 
 
-    source_reason: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
+    mastery_before: Mapped[float] = mapped_column(
+        Float,
+        default=0.5,
+        nullable=False,
     )
 
 
@@ -93,11 +112,4 @@ class AdaptiveExercise(Base):
         DateTime,
         default=datetime.utcnow,
         nullable=False,
-    )
-
-
-    attempts = relationship(
-        "ExerciseAttempt",
-        back_populates="exercise",
-        cascade="all, delete-orphan",
     )

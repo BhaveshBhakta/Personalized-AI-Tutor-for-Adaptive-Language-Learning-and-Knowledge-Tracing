@@ -1,18 +1,17 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean,
     DateTime,
     Float,
     ForeignKey,
     Integer,
+    String,
     Text,
 )
 
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
-    relationship,
 )
 
 from app.db.base_class import Base
@@ -22,9 +21,11 @@ class ExerciseAttempt(Base):
 
     __tablename__ = "exercise_attempts"
 
+
     id: Mapped[int] = mapped_column(
         primary_key=True
     )
+
 
     exercise_id: Mapped[int] = mapped_column(
         ForeignKey(
@@ -35,6 +36,7 @@ class ExerciseAttempt(Base):
         index=True,
     )
 
+
     user_id: Mapped[int] = mapped_column(
         ForeignKey(
             "users.id",
@@ -44,26 +46,23 @@ class ExerciseAttempt(Base):
         index=True,
     )
 
-    learner_answer: Mapped[str] = mapped_column(
+
+    submitted_answer: Mapped[str] = mapped_column(
         Text,
         nullable=False,
     )
 
+
     is_correct: Mapped[bool] = mapped_column(
-        Boolean,
         nullable=False,
     )
+
 
     score: Mapped[float] = mapped_column(
         Float,
-        default=0.0,
         nullable=False,
     )
 
-    feedback: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-    )
 
     attempt_number: Mapped[int] = mapped_column(
         Integer,
@@ -71,13 +70,16 @@ class ExerciseAttempt(Base):
         nullable=False,
     )
 
+
+    grading_method: Mapped[str] = mapped_column(
+        String(50),
+        default="exact",
+        nullable=False,
+    )
+
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
         nullable=False,
-    )
-
-    exercise = relationship(
-        "AdaptiveExercise",
-        back_populates="attempts",
     )

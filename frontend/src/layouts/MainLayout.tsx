@@ -235,13 +235,11 @@ export default function MainLayout({
               items-center
               gap-3
             "
-            to="/practice"
+            to="/adaptive-practice"
           >
             <Dumbbell size={18} />
-
             Adaptive Practice
           </Link>
-
         </nav>
 
 
