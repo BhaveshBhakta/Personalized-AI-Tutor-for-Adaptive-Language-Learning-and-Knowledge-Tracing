@@ -4,6 +4,10 @@ from app.models.learning_signal import (
     LearningSignal,
 )
 
+from app.models.topic_mastery import (
+    TopicMastery,
+)
+
 from app.services.learner_context_service import (
     LearnerContextService,
 )
@@ -30,6 +34,10 @@ class LearnerStateService:
     ) -> dict:
 
 
+        # -------------------------------------------------
+        # BASE LEARNER CONTEXT
+        # -------------------------------------------------
+
         base_context = (
 
             self.context_service
@@ -43,6 +51,10 @@ class LearnerStateService:
 
         )
 
+
+        # -------------------------------------------------
+        # LEARNING SIGNALS
+        # -------------------------------------------------
 
         signals = (
 
@@ -75,6 +87,10 @@ class LearnerStateService:
         )
 
 
+        # -------------------------------------------------
+        # RECURRING WEAKNESSES
+        # -------------------------------------------------
+
         recurring_weaknesses = [
 
             {
@@ -101,13 +117,19 @@ class LearnerStateService:
             if signal.signal_type in {
 
                 "grammar_confusion",
+
                 "vocabulary_confusion",
+
                 "repeated_mistake",
 
             }
 
         ]
 
+
+        # -------------------------------------------------
+        # POSITIVE LEARNING SIGNALS
+        # -------------------------------------------------
 
         positive_signals = [
 
@@ -135,12 +157,112 @@ class LearnerStateService:
             if signal.signal_type in {
 
                 "correction_success",
+
                 "concept_understood",
 
             }
 
         ]
 
+
+        # -------------------------------------------------
+        # UNIFIED TOPIC MASTERY
+        # -------------------------------------------------
+
+        topic_mastery_records = (
+
+            db.query(
+                TopicMastery
+            )
+
+            .filter(
+
+                TopicMastery.user_id
+                == user_id,
+
+            )
+
+            .order_by(
+
+                TopicMastery
+                .mastery_probability
+                .asc(),
+
+                TopicMastery
+                .confidence
+                .desc(),
+
+            )
+
+            .all()
+
+        )
+
+
+        topic_mastery = [
+
+            {
+
+                "skill_id":
+                    record.skill_id,
+
+                "category":
+                    record.category,
+
+                "topic":
+                    record.topic,
+
+                "mastery_probability":
+                    record.mastery_probability,
+
+                "confidence":
+                    record.confidence,
+
+                "evidence_count":
+                    record.evidence_count,
+
+                "correct_evidence":
+                    record.correct_evidence,
+
+                "incorrect_evidence":
+                    record.incorrect_evidence,
+
+            }
+
+            for record
+            in topic_mastery_records
+
+        ]
+
+
+        # -------------------------------------------------
+        # LOW-MASTERY TOPICS
+        # -------------------------------------------------
+
+        weakest_mastery_topics = [
+
+            item
+
+            for item in topic_mastery
+
+            if (
+
+                item[
+                    "mastery_probability"
+                ] < 0.60
+
+                and item[
+                    "confidence"
+                ] >= 0.20
+
+            )
+
+        ]
+
+
+        # -------------------------------------------------
+        # RETURN UNIFIED LEARNER STATE
+        # -------------------------------------------------
 
         return {
 
@@ -151,5 +273,11 @@ class LearnerStateService:
 
             "positive_signals":
                 positive_signals,
+
+            "topic_mastery":
+                topic_mastery,
+
+            "weakest_mastery_topics":
+                weakest_mastery_topics,
 
         }

@@ -39,6 +39,18 @@ class AdaptivePlanService:
 
         )
 
+        mastery_weaknesses = (
+
+            state.get(
+
+                "weakest_mastery_topics",
+
+                [],
+
+            )
+
+        )
+
 
         daily_minutes = state[
             "profile"
@@ -63,6 +75,76 @@ class AdaptivePlanService:
 
 
         tasks = []
+
+
+        for weakness in (
+            mastery_weaknesses[:2]
+        ):
+
+
+            mastery = weakness[
+                "mastery_probability"
+            ]
+
+
+            confidence = weakness[
+                "confidence"
+            ]
+
+
+            if (
+                mastery >= 0.60
+                or confidence < 0.30
+            ):
+
+                continue
+
+
+            tasks.append({
+
+                "type":
+                    "mastery_review",
+
+                "title":
+                    (
+                        "Strengthen "
+                        + weakness[
+                            "topic"
+                        ]
+                    ),
+
+                "minutes":
+                    min(
+                        10,
+                        max(
+                            5,
+                            daily_minutes // 4,
+                        ),
+                    ),
+
+                "priority":
+                    "high",
+
+                "reason":
+                    "Low unified mastery",
+
+                "category":
+                    weakness[
+                        "category"
+                    ],
+
+                "topic":
+                    weakness[
+                        "topic"
+                    ],
+
+                "mastery_probability":
+                    mastery,
+
+                "confidence":
+                    confidence,
+
+            })
 
 
         if weak_vocabulary:

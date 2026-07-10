@@ -30,6 +30,10 @@ from app.services.learning_signal_service import (
     LearningSignalService,
 )
 
+from app.services.knowledge_tracing_service import (
+    KnowledgeTracingService,
+)
+
 class AIOrchestrator:
 
 
@@ -55,6 +59,10 @@ class AIOrchestrator:
 
         self.signal_service = (
             LearningSignalService()
+        )
+
+        self.knowledge_tracer = (
+            KnowledgeTracingService()
         )
 
 
@@ -269,6 +277,51 @@ class AIOrchestrator:
             )
 
         )
+
+        weakest_mastery_topics = (
+
+            learner_context.get(
+
+                "weakest_mastery_topics",
+
+                [],
+
+            )[:5]
+
+        )
+
+
+        mastery_context = ""
+
+
+        if weakest_mastery_topics:
+
+
+            mastery_lines = []
+
+
+            for item in (
+                weakest_mastery_topics
+            ):
+
+
+                mastery_lines.append(
+
+                    (
+                        f"- {item['category']}: "
+                        f"{item['topic']} "
+                        f"(mastery="
+                        f"{item['mastery_probability']:.2f}, "
+                        f"confidence="
+                        f"{item['confidence']:.2f})"
+                    )
+
+                )
+
+
+            mastery_context = "\n".join(
+                mastery_lines
+            )
 
         recurring_weaknesses = learner_context[
             "recurring_weaknesses"
@@ -566,6 +619,19 @@ IMPORTANT CONVERSATION RULES:
 
 7. Keep the answer focused and avoid unnecessary repetition.
 
+
+UNIFIED MASTERY STATE:
+
+{mastery_context if mastery_context else "No reliable unified mastery estimates yet."}
+
+PERSONALIZATION RULES:
+
+1. Use mastery information to adjust explanation depth.
+2. For low-mastery topics, explain more carefully and use simpler examples.
+3. For high-confidence weaknesses, include one short corrective example when relevant.
+4. Do not force unrelated weak topics into the current answer.
+5. The learner's current question always remains the primary task.
+
 FULL CONVERSATION HISTORY:
 
 {history_text if history_text else "No previous conversation history."}
@@ -705,18 +771,40 @@ For German grammar:
         )
 
 
-        self.signal_service.record_signals(
+        affected_topics = (
 
-            db=db,
+            self.signal_service
+            .record_signals(
 
-            user_id=user_id,
+                db=db,
 
-            conversation_id=
-                conversation_id,
+                user_id=user_id,
 
-            signals=signals,
+                conversation_id=
+                    conversation_id,
+
+                signals=signals,
+
+            )
 
         )
+
+
+        for category, topic in (
+            affected_topics
+        ):
+
+            self.knowledge_tracer.calculate_topic_mastery(
+
+                db=db,
+
+                user_id=user_id,
+
+                category=category,
+
+                topic=topic,
+
+            )
 
 
         return {
@@ -903,15 +991,37 @@ For German grammar:
                 )
 
 
-                self.signal_service.record_signals(
+                affected_topics = (
 
-                    db=db,
+                    self.signal_service
+                    .record_signals(
 
-                    user_id=user_id,
+                        db=db,
 
-                    conversation_id=
-                        conversation_id,
+                        user_id=user_id,
 
-                    signals=signals,
+                        conversation_id=
+                            conversation_id,
+
+                        signals=signals,
+
+                    )
 
                 )
+
+
+                for category, topic in (
+                    affected_topics
+                ):
+
+                    self.knowledge_tracer.calculate_topic_mastery(
+
+                        db=db,
+
+                        user_id=user_id,
+
+                        category=category,
+
+                        topic=topic,
+
+                    )

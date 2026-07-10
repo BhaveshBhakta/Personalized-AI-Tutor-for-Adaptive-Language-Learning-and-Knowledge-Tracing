@@ -14,6 +14,8 @@ from app.api.vocabulary_intelligence import (router as vocabulary_intelligence_r
 from app.api.documents import router as document_router
 from app.api.ai import router as ai_router
 from app.api.exercises import (router as exercises_router,)
+from app.api.mastery import (router as mastery_router,)
+
 app = FastAPI()
 
 
@@ -40,6 +42,7 @@ app.include_router(vocabulary_intelligence_router)
 app.include_router(document_router)
 app.include_router(ai_router)
 app.include_router(exercises_router)
+app.include_router(mastery_router)
 
 @app.get("/")
 def root():

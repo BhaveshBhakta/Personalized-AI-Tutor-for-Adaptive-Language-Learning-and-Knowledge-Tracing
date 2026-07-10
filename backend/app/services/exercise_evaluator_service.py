@@ -20,6 +20,9 @@ from app.services.learning_signal_service import (
     LearningSignalService,
 )
 
+from app.services.knowledge_tracing_service import (
+    KnowledgeTracingService,
+)
 
 class ExerciseEvaluatorService:
 
@@ -32,6 +35,10 @@ class ExerciseEvaluatorService:
 
         self.signal_service = (
             LearningSignalService()
+        )
+
+        self.knowledge_tracer = (
+            KnowledgeTracingService()
         )
 
 
@@ -248,6 +255,20 @@ Rules:
 
             attempt_number=
                 attempt.attempt_number,
+
+        )
+
+        self.knowledge_tracer.calculate_topic_mastery(
+
+            db=db,
+
+            user_id=user_id,
+
+            category=
+                exercise.category,
+
+            topic=
+                exercise.topic,
 
         )
 

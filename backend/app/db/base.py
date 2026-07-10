@@ -15,3 +15,6 @@ from app.models.chat_message import ChatMessage
 from app.models.learning_signal import LearningSignal
 from app.models.adaptive_exercise import (AdaptiveExercise,)
 from app.models.exercise_attempt import (ExerciseAttempt,)
+from app.models.topic_mastery import (TopicMastery,)
+from app.models.skill import Skill
+from app.models.skill_alias import SkillAlias
