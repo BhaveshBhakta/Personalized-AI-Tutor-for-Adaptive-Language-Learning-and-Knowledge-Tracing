@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Search,
   Settings,
+  Dumbbell,
 } from "lucide-react";
 
 import {
@@ -41,7 +42,6 @@ export default function MainLayout({
     logout();
 
   }
-
 
   return (
 
@@ -227,6 +227,19 @@ export default function MainLayout({
             <Settings size={18} />
 
             Settings
+          </Link>
+
+          <Link
+            className="
+              flex
+              items-center
+              gap-3
+            "
+            to="/practice"
+          >
+            <Dumbbell size={18} />
+
+            Adaptive Practice
           </Link>
 
         </nav>

@@ -4,54 +4,23 @@ import {
   Routes,
 } from "react-router-dom";
 
-import MainLayout
-  from "../layouts/MainLayout";
-
-import ProtectedRoute
-  from "./ProtectedRoute";
-
-
-import Dashboard
-  from "../pages/Dashboard";
-
-import Vocabulary
-  from "../pages/Vocabulary";
-
-import Flashcards
-  from "../pages/Flashcards";
-
-import Discover
-  from "../pages/Discover";
-
-import Settings
-  from "../pages/Settings";
-
-import Grammar
-  from "../pages/Grammar";
-
-import GrammarQuiz
-  from "../pages/GrammarQuiz";
-
-import GrammarProgress
-  from "../pages/GrammarProgress";
-
-import Planner
-  from "../pages/Planner";
-
-import Login
-  from "../pages/Login";
-
-import Intelligence
-  from "../pages/Intelligence";
-
-import VocabularyIntelligence
-  from "../pages/VocabularyIntelligence";
-
-import AIChat
-  from "../pages/AIChat";
-
-import Documents
-  from "../pages/Documents";
+import MainLayout from "../layouts/MainLayout";
+import ProtectedRoute from "./ProtectedRoute";
+import Dashboard from "../pages/Dashboard";
+import Vocabulary from "../pages/Vocabulary";
+import Flashcards from "../pages/Flashcards";
+import Discover from "../pages/Discover";
+import Settings from "../pages/Settings";
+import Grammar from "../pages/Grammar";
+import GrammarQuiz from "../pages/GrammarQuiz";
+import GrammarProgress from "../pages/GrammarProgress";
+import Planner from "../pages/Planner";
+import Login from "../pages/Login";
+import Intelligence from "../pages/Intelligence";
+import VocabularyIntelligence from "../pages/VocabularyIntelligence";
+import AIChat from "../pages/AIChat";
+import Documents from "../pages/Documents";
+import AdaptivePractice from "../pages/AdaptivePractice";
 
 export default function AppRouter() {
 
@@ -180,6 +149,13 @@ export default function AppRouter() {
                     path="/documents"
                     element={
                       <Documents />
+                    }
+                  />
+
+                  <Route
+                    path="/practice"
+                    element={
+                      <AdaptivePractice />
                     }
                   />
 

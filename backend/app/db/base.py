@@ -12,3 +12,6 @@ from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
 from app.models.conversation import Conversation
 from app.models.chat_message import ChatMessage
+from app.models.learning_signal import LearningSignal
+from app.models.adaptive_exercise import (AdaptiveExercise,)
+from app.models.exercise_attempt import (ExerciseAttempt,)

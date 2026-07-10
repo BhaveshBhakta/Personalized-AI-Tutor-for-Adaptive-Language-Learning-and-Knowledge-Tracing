@@ -18,6 +18,18 @@ from app.services.retriever import (
     Retriever,
 )
 
+from app.services.learner_state_service import (
+    LearnerStateService,
+)
+
+from app.services.learning_signal_detector import (
+    LearningSignalDetector,
+)
+
+from app.services.learning_signal_service import (
+    LearningSignalService,
+)
+
 class AIOrchestrator:
 
 
@@ -32,6 +44,18 @@ class AIOrchestrator:
         )
 
         self.llm = LLMService()
+
+        self.learner_state = (
+            LearnerStateService()
+        )
+
+        self.signal_detector = (
+            LearningSignalDetector()
+        )
+
+        self.signal_service = (
+            LearningSignalService()
+        )
 
 
     def build_prompt(
@@ -68,7 +92,7 @@ class AIOrchestrator:
                     top_k=5,
 
                     max_distance=
-                        YOUR_TESTED_THRESHOLD,
+                        None,
 
                     max_context_chars=
                         12000,
@@ -120,6 +144,116 @@ class AIOrchestrator:
 
             best_distance = None
 
+
+        learner_context = (
+
+            self.learner_state
+            .get_state(
+
+                db=db,
+
+                user_id=user_id,
+
+            )
+
+        )
+
+
+        profile = learner_context[
+            "profile"
+        ]
+
+
+        weak_grammar = learner_context[
+            "weak_grammar"
+        ]
+
+
+        grammar_context_text = ""
+
+
+        if weak_grammar:
+
+            for item in weak_grammar:
+
+                grammar_context_text += (
+
+                    f"- Grammar topic ID: "
+                    f"{item['topic_id']}\n"
+
+                    f"  Mastery: "
+                    f"{item['mastery_score']}%\n"
+
+                    f"  Accuracy: "
+                    f"{item['accuracy']}%\n"
+
+                )
+
+        else:
+
+            grammar_context_text = (
+
+                "No weak grammar topics "
+                "have been identified yet."
+
+            )
+
+
+        weak_vocabulary = learner_context[
+            "weak_vocabulary"
+        ]
+
+
+        vocabulary_context_text = ""
+
+
+        if weak_vocabulary:
+
+            for item in weak_vocabulary:
+
+                display_word = item[
+                    "word"
+                ]
+
+
+                if item.get(
+                    "article"
+                ):
+
+                    display_word = (
+
+                        f"{item['article']} "
+                        f"{item['word']}"
+
+                    )
+
+
+                vocabulary_context_text += (
+
+                    f"- {display_word}"
+                    f" = {item['translation']}\n"
+
+                    f"  Mastery: "
+                    f"{item['mastery_score']}%\n"
+
+                    f"  Retrievability: "
+                    f"{round(item['retrievability'] * 100, 1)}%\n"
+
+                    f"  Lapses: "
+                    f"{item['lapses']}\n"
+
+                )
+
+        else:
+
+            vocabulary_context_text = (
+
+                "No weak vocabulary has "
+                "been identified yet."
+
+            )
+
+
         history = (
 
             self.memory
@@ -135,6 +269,40 @@ class AIOrchestrator:
             )
 
         )
+
+        recurring_weaknesses = learner_context[
+            "recurring_weaknesses"
+        ]
+
+
+        weakness_context_text = ""
+
+
+        if recurring_weaknesses:
+
+            for weakness in recurring_weaknesses:
+
+                weakness_context_text += (
+
+                    f"- {weakness['topic']}\n"
+
+                    f"  Category: "
+                    f"{weakness['category']}\n"
+
+                    f"  Pattern: "
+                    f"{weakness['type']}\n"
+
+                    f"  Occurrences: "
+                    f"{weakness['occurrences']}\n"
+
+                )
+
+        else:
+
+            weakness_context_text = (
+                "No recurring mistake patterns "
+                "have been detected yet."
+            )
 
 
         history_text = ""
@@ -300,6 +468,70 @@ clearly, and according to the ongoing conversation.
 
 {grounding_instruction}
 
+LEARNER PROFILE:
+
+Target German level:
+{profile["target_level"]}
+
+Daily study goal:
+{profile["daily_goal_minutes"]} minutes
+
+Current XP:
+{profile["xp"]}
+
+Current streak:
+{profile["streak"]} days
+
+
+KNOWN WEAK GRAMMAR AREAS:
+
+{grammar_context_text}
+
+
+KNOWN WEAK VOCABULARY:
+
+{vocabulary_context_text}
+
+
+OBSERVED LEARNING PATTERNS:
+
+{weakness_context_text}
+
+
+PERSONALIZATION RULES:
+
+1. Adapt explanation difficulty to the learner's target level.
+
+2. Use known weak vocabulary naturally when useful for examples,
+   but do not force unrelated vocabulary into every answer.
+
+3. If the current question concerns a known weak grammar area,
+   explain it carefully and use additional examples.
+
+4. Do not tell the learner that you are reading database scores.
+
+5. Do not mention mastery percentages unless the learner explicitly
+   asks about progress.
+
+6. Personalization context should guide teaching strategy,
+   not override the learner's current question.
+
+7. The current learner question remains the highest-priority task.
+
+8. If an observed recurring weakness is relevant to the current
+   question, provide additional scaffolding and contrastive examples.
+
+9. Do not repeatedly lecture the learner about known weaknesses.
+
+10. When the learner demonstrates improvement, gradually reduce
+    scaffolding.
+
+11. Never mention internal signal names, confidence values,
+    occurrence counts, or stored learner-state data.
+
+12. Do not force personalization when the observed weakness is
+    unrelated to the current question.
+
 IMPORTANT CONVERSATION RULES:
 
 1. First interpret the learner's current question using the MOST RECENT
@@ -458,6 +690,31 @@ For German grammar:
             content=answer,
 
             sources=sources,
+
+        )
+
+
+        signals = self.signal_detector.detect(
+
+            question=question,
+
+            answer=answer,
+
+            provider=provider,
+
+        )
+
+
+        self.signal_service.record_signals(
+
+            db=db,
+
+            user_id=user_id,
+
+            conversation_id=
+                conversation_id,
+
+            signals=signals,
 
         )
 
@@ -632,5 +889,29 @@ For German grammar:
 
                     sources=
                         sources,
+
+                )
+
+                signals = self.signal_detector.detect(
+
+                    question=question,
+
+                    answer=complete_answer,
+
+                    provider=provider,
+
+                )
+
+
+                self.signal_service.record_signals(
+
+                    db=db,
+
+                    user_id=user_id,
+
+                    conversation_id=
+                        conversation_id,
+
+                    signals=signals,
 
                 )

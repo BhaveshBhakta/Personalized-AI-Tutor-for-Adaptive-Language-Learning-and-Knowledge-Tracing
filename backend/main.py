@@ -10,13 +10,10 @@ from app.api.german_words import router as german_words_router
 from app.api.grammar import router as grammar_router
 from app.api.planner import router as planner_router
 from app.api.intelligence import router as intelligence_router
-from app.api.vocabulary_intelligence import (
-    router as vocabulary_intelligence_router,
-)
+from app.api.vocabulary_intelligence import (router as vocabulary_intelligence_router,)
 from app.api.documents import router as document_router
 from app.api.ai import router as ai_router
-
-
+from app.api.exercises import (router as exercises_router,)
 app = FastAPI()
 
 
@@ -30,7 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(vocabulary_router)
@@ -42,10 +38,8 @@ app.include_router(planner_router)
 app.include_router(intelligence_router)
 app.include_router(vocabulary_intelligence_router)
 app.include_router(document_router)
-
-# AI Tutor routes
 app.include_router(ai_router)
-
+app.include_router(exercises_router)
 
 @app.get("/")
 def root():

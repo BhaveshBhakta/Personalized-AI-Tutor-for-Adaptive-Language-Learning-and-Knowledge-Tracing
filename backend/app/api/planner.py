@@ -21,11 +21,18 @@ from app.models.grammar_topic import (
     GrammarTopic
 )
 
+from app.services.adaptive_plan_service import (
+    AdaptivePlanService,
+)
+
 router = APIRouter(
     prefix="/planner",
     tags=["Planner"],
 )
 
+adaptive_plan = (
+    AdaptivePlanService()
+)
 
 @router.get("/today")
 def today_plan(
@@ -112,3 +119,22 @@ def today_plan(
         "recommended_grammar":
         10,
     }
+
+@router.get("/adaptive")
+def adaptive_plan_today(
+
+    db: Session = Depends(get_db),
+
+    user_id: int = Depends(
+        get_current_user_id
+    ),
+
+):
+
+    return adaptive_plan.build_plan(
+
+        db=db,
+
+        user_id=user_id,
+
+    )
