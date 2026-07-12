@@ -4,6 +4,9 @@ from app.services.learner_state_service import (
     LearnerStateService,
 )
 
+from app.services.adaptive_decision_service import (
+    AdaptiveDecisionService,
+)
 
 class AdaptivePlanService:
 
@@ -12,6 +15,10 @@ class AdaptivePlanService:
 
         self.learner_state = (
             LearnerStateService()
+        )
+
+        self.decision_engine = (
+            AdaptiveDecisionService()
         )
 
 
@@ -30,6 +37,19 @@ class AdaptivePlanService:
 
             self.learner_state
             .get_state(
+
+                db=db,
+
+                user_id=user_id,
+
+            )
+
+        )
+
+        decision = (
+
+            self.decision_engine
+            .next_learning_action(
 
                 db=db,
 
@@ -313,5 +333,8 @@ class AdaptivePlanService:
 
             "adaptive":
                 True,
+
+            "recommended_action":
+                decision,
 
         }

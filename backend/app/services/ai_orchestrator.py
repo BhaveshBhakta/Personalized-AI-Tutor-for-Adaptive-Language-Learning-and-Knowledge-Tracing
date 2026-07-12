@@ -34,6 +34,10 @@ from app.services.knowledge_tracing_service import (
     KnowledgeTracingService,
 )
 
+from app.services.adaptive_decision_service import (
+    AdaptiveDecisionService,
+)
+
 class AIOrchestrator:
 
 
@@ -63,6 +67,12 @@ class AIOrchestrator:
 
         self.knowledge_tracer = (
             KnowledgeTracingService()
+        )
+
+        self.decision_engine = (
+
+            AdaptiveDecisionService()
+
         )
 
 
@@ -273,6 +283,19 @@ class AIOrchestrator:
                     conversation_id,
 
                 limit=12,
+
+            )
+
+        )
+
+        decision = (
+
+            self.decision_engine
+            .next_learning_action(
+
+                db=db,
+
+                user_id=user_id,
 
             )
 
@@ -671,6 +694,21 @@ For German grammar:
 - verify case and article forms carefully;
 - dative plural definite article is "den";
 - mention plural noun "-n" where applicable.
+
+CURRENT ADAPTIVE LEARNING STATE
+
+Recommended action:
+{decision.get("action")}
+
+Reason:
+{decision.get("reason")}
+
+Topic to reinforce:
+{decision.get("topic")}
+
+Difficulty:
+{decision.get("difficulty")}
+
 """
 
 

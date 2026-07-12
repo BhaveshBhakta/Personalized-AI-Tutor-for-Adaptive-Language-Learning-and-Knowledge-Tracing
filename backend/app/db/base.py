@@ -20,3 +20,5 @@ from app.models.skill import Skill
 from app.models.skill_alias import SkillAlias
 from app.models.adaptive_exercise import (AdaptiveExercise,)
 from app.models.exercise_attempt import (ExerciseAttempt,)
+from app.models.practice_session import (PracticeSession,)
+from app.models.practice_session_item import (PracticeSessionItem,)

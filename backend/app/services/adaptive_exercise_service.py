@@ -19,6 +19,9 @@ from app.services.llm_service import (
     LLMService,
 )
 
+from app.services.adaptive_decision_service import (
+    AdaptiveDecisionService,
+)
 
 class AdaptiveExerciseService:
 
@@ -35,6 +38,12 @@ class AdaptiveExerciseService:
 
         self.llm = (
             LLMService()
+        )
+
+        self.decision_engine = (
+
+            AdaptiveDecisionService()
+
         )
 
 
@@ -214,23 +223,37 @@ class AdaptiveExerciseService:
 
         provider: str = "groq",
 
+        target_category:
+            str | None = None,
+
+        target_topic:
+            str | None = None,
+
+        difficulty_override:
+            int | None = None,
+
     ) -> dict:
 
 
-        queue = (
+        decision = {}
 
-            self.practice_queue
-            .build_queue(
+        if not (
+            target_category
+            and target_topic
+        ):
 
-                db=db,
+            decision = (
 
-                user_id=user_id,
+                self.decision_engine
+                .next_learning_action(
 
-                limit=5,
+                    db=db,
 
-            )
+                    user_id=user_id,
 
-        )
+                )
+
+    )
 
 
         state = (
@@ -247,24 +270,38 @@ class AdaptiveExerciseService:
         )
 
 
-        if queue:
+        if (
+            target_category
+            and target_topic
+        ):
 
-            target = queue[0]
+            category = (
+                target_category
+            )
 
-            category = target[
-                "category"
-            ]
-
-            topic = target[
-                "topic"
-            ]
+            topic = (
+                target_topic
+            )
 
 
         else:
 
-            category = "general"
+            category = decision.get(
 
-            topic = "German A1 practice"
+                "category",
+
+                "general",
+
+            )
+
+
+            topic = decision.get(
+
+                "topic",
+
+                "German A1 practice",
+
+            )
 
 
         (
@@ -281,17 +318,40 @@ class AdaptiveExerciseService:
         )
 
 
-        difficulty = (
-            self._choose_difficulty(
+        if difficulty_override is not None:
 
-                mastery_probability=
-                    mastery_probability,
+            difficulty = max(
 
-                confidence=
-                    confidence,
+                1,
+
+                min(
+                    difficulty_override,
+                    5,
+                ),
 
             )
-        )
+
+
+        elif "difficulty" in decision:
+
+            difficulty = decision["difficulty"]
+
+
+        else:
+
+            difficulty = (
+
+                self._choose_difficulty(
+
+                    mastery_probability=
+                        mastery_probability,
+
+                    confidence=
+                        confidence,
+
+                )
+
+            )
 
 
         prompt = f"""

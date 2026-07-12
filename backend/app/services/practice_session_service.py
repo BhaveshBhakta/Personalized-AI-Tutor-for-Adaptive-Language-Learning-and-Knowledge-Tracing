@@ -1,11 +1,21 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
+
+from app.models.practice_session import (
+    PracticeSession,
+)
+
+from app.models.practice_session_item import (
+    PracticeSessionItem,
+)
+
+from app.models.adaptive_exercise import (
+    AdaptiveExercise,
+)
 
 from app.services.adaptive_exercise_service import (
     AdaptiveExerciseService,
-)
-
-from app.services.practice_queue_service import (
-    PracticeQueueService,
 )
 
 
@@ -14,16 +24,12 @@ class PracticeSessionService:
 
     def __init__(self):
 
-        self.queue_service = (
-            PracticeQueueService()
-        )
-
         self.exercise_service = (
             AdaptiveExerciseService()
         )
 
 
-    def create_session(
+    def start_session(
 
         self,
 
@@ -31,133 +37,674 @@ class PracticeSessionService:
 
         user_id: int,
 
-        size: int = 5,
+        target_exercises: int = 5,
 
         provider: str = "groq",
 
     ) -> dict:
 
 
-        size = max(
+        target_exercises = max(
+
             1,
+
             min(
-                size,
-                10,
+                target_exercises,
+                20,
             ),
+
         )
 
 
-        queue = (
+        active_session = (
 
-            self.queue_service
-            .build_queue(
+            db.query(
+                PracticeSession
+            )
+
+            .filter(
+
+                PracticeSession.user_id
+                == user_id,
+
+                PracticeSession.status
+                == "active",
+
+            )
+
+            .order_by(
+
+                PracticeSession.started_at.desc()
+
+            )
+
+            .first()
+
+        )
+
+
+        if active_session:
+
+            return self.get_session_state(
 
                 db=db,
 
                 user_id=user_id,
 
-                limit=size,
+                session_id=
+                    active_session.id,
+
+            )
+
+
+        session = PracticeSession(
+
+            user_id=user_id,
+
+            status="active",
+
+            target_exercises=
+                target_exercises,
+
+        )
+
+
+        db.add(session)
+
+        db.commit()
+
+        db.refresh(session)
+
+
+        exercise_data = (
+
+            self.exercise_service
+            .generate_exercise(
+
+                db=db,
+
+                user_id=user_id,
+
+                provider=provider,
 
             )
 
         )
 
 
-        exercises = []
+        exercise = (
 
+            db.query(
+                AdaptiveExercise
+            )
 
-        exercise_types = [
+            .filter(
 
-            "fill_blank",
+                AdaptiveExercise.exercise_id
+                == exercise_data[
+                    "exercise_id"
+                ],
 
-            "multiple_choice",
-
-            "translation",
-
-            "correction",
-
-        ]
-
-
-        for index, target in enumerate(
-            queue
-        ):
-
-            exercise_type = (
-
-                exercise_types[
-
-                    index
-                    % len(exercise_types)
-
-                ]
+                AdaptiveExercise.user_id
+                == user_id,
 
             )
 
+            .first()
 
-            exercise = (
+        )
 
-                self.exercise_service
-                .generate(
 
-                    db=db,
+        if not exercise:
 
-                    user_id=user_id,
+            session.status = "failed"
 
-                    exercise_type=
-                        exercise_type,
+            db.commit()
 
-                    provider=
-                        provider,
-
-                    target_override={
-                        "category":
-                            target["category"],
-
-                        "topic":
-                            target["topic"],
-
-                        "reason":
-                            target["reason"],
-                    },
-
-                )
-
+            raise ValueError(
+                "Generated exercise could not be found"
             )
 
 
-            exercises.append({
+        item = PracticeSessionItem(
 
-                "id":
-                    exercise.id,
+            session_id=session.id,
 
-                "exercise_type":
-                    exercise.exercise_type,
+            exercise_id=exercise.id,
 
-                "category":
-                    exercise.category,
+            sequence_number=1,
 
-                "topic":
-                    exercise.topic,
+        )
 
-                "difficulty_level":
-                    exercise.difficulty_level,
 
-                "question":
-                    exercise.question,
+        db.add(item)
 
-                "source_reason":
-                    exercise.source_reason,
-
-            })
+        db.commit()
 
 
         return {
 
-            "exercise_count":
-                len(exercises),
+            "session_id":
+                session.id,
 
-            "exercises":
-                exercises,
+            "status":
+                session.status,
+
+            "target_exercises":
+                session.target_exercises,
+
+            "completed_exercises":
+                session.completed_exercises,
+
+            "correct_exercises":
+                session.correct_exercises,
+
+            "exercise":
+                exercise_data,
 
         }
+
+
+    def get_session(
+
+        self,
+
+        db: Session,
+
+        user_id: int,
+
+        session_id: int,
+
+    ) -> PracticeSession | None:
+
+
+        return (
+
+            db.query(
+                PracticeSession
+            )
+
+            .filter(
+
+                PracticeSession.id
+                == session_id,
+
+                PracticeSession.user_id
+                == user_id,
+
+            )
+
+            .first()
+
+        )
+
+
+    def get_current_item(
+
+        self,
+
+        db: Session,
+
+        session_id: int,
+
+    ) -> PracticeSessionItem | None:
+
+
+        return (
+
+            db.query(
+                PracticeSessionItem
+            )
+
+            .filter(
+
+                PracticeSessionItem.session_id
+                == session_id,
+
+                PracticeSessionItem.answered
+                == False,
+
+            )
+
+            .order_by(
+
+                PracticeSessionItem.sequence_number.asc()
+
+            )
+
+            .first()
+
+        )
+
+
+    def get_session_state(
+
+        self,
+
+        db: Session,
+
+        user_id: int,
+
+        session_id: int,
+
+    ) -> dict:
+
+
+        session = self.get_session(
+
+            db=db,
+
+            user_id=user_id,
+
+            session_id=session_id,
+
+        )
+
+
+        if not session:
+
+            raise ValueError(
+                "Practice session not found"
+            )
+
+
+        current_item = (
+
+            self.get_current_item(
+
+                db=db,
+
+                session_id=session.id,
+
+            )
+
+        )
+
+
+        exercise_data = None
+
+
+        if current_item:
+
+            exercise = (
+
+                db.query(
+                    AdaptiveExercise
+                )
+
+                .filter(
+
+                    AdaptiveExercise.id
+                    == current_item.exercise_id
+
+                )
+
+                .first()
+
+            )
+
+
+            if exercise:
+
+                exercise_data = {
+
+                    "exercise_id":
+                        exercise.exercise_id,
+
+                    "category":
+                        exercise.category,
+
+                    "topic":
+                        exercise.topic,
+
+                    "exercise_type":
+                        exercise.exercise_type,
+
+                    "difficulty":
+                        exercise.difficulty,
+
+                    "question":
+                        exercise.question,
+
+                    "options":
+                        exercise.options,
+
+                    "hint":
+                        exercise.hint,
+
+                    "metadata": {
+
+                        "mastery_before":
+                            exercise.mastery_before,
+
+                    },
+
+                }
+
+
+        average_score = (
+
+            session.total_score
+            / session.completed_exercises
+
+            if session.completed_exercises > 0
+
+            else 0.0
+
+        )
+
+
+        return {
+
+            "session_id":
+                session.id,
+
+            "status":
+                session.status,
+
+            "target_exercises":
+                session.target_exercises,
+
+            "completed_exercises":
+                session.completed_exercises,
+
+            "correct_exercises":
+                session.correct_exercises,
+
+            "average_score":
+                average_score,
+
+            "exercise":
+                exercise_data,
+
+        }
+
+
+    def record_result(
+
+        self,
+
+        db: Session,
+
+        user_id: int,
+
+        session_id: int,
+
+        exercise_public_id: str,
+
+        result: dict,
+
+    ) -> PracticeSession:
+
+
+        session = self.get_session(
+
+            db=db,
+
+            user_id=user_id,
+
+            session_id=session_id,
+
+        )
+
+
+        if not session:
+
+            raise ValueError(
+                "Practice session not found"
+            )
+
+
+        if session.status != "active":
+
+            raise ValueError(
+                "Practice session is not active"
+            )
+
+
+        exercise = (
+
+            db.query(
+                AdaptiveExercise
+            )
+
+            .filter(
+
+                AdaptiveExercise.exercise_id
+                == exercise_public_id,
+
+                AdaptiveExercise.user_id
+                == user_id,
+
+            )
+
+            .first()
+
+        )
+
+
+        if not exercise:
+
+            raise ValueError(
+                "Exercise not found"
+            )
+
+
+        item = (
+
+            db.query(
+                PracticeSessionItem
+            )
+
+            .filter(
+
+                PracticeSessionItem.session_id
+                == session.id,
+
+                PracticeSessionItem.exercise_id
+                == exercise.id,
+
+            )
+
+            .first()
+
+        )
+
+
+        if not item:
+
+            raise ValueError(
+                "Exercise does not belong to this session"
+            )
+
+
+        if item.answered:
+
+            raise ValueError(
+                "Exercise already answered"
+            )
+
+
+        item.answered = True
+
+        item.is_correct = result[
+            "is_correct"
+        ]
+
+        item.score = result[
+            "score"
+        ]
+
+
+        session.completed_exercises += 1
+
+        session.total_score += float(
+            result["score"]
+        )
+
+
+        if result["is_correct"]:
+
+            session.correct_exercises += 1
+
+
+        if (
+
+            session.completed_exercises
+            >= session.target_exercises
+
+        ):
+
+            session.status = "completed"
+
+            session.completed_at = (
+                datetime.utcnow()
+            )
+
+
+        db.commit()
+
+        db.refresh(session)
+
+
+        return session
+
+
+    def create_next_exercise(
+
+        self,
+
+        db: Session,
+
+        user_id: int,
+
+        session_id: int,
+
+        provider: str = "groq",
+
+    ) -> dict | None:
+
+
+        session = self.get_session(
+
+            db=db,
+
+            user_id=user_id,
+
+            session_id=session_id,
+
+        )
+
+
+        if not session:
+
+            raise ValueError(
+                "Practice session not found"
+            )
+
+
+        if session.status == "completed":
+
+            return None
+
+
+        existing_item = (
+
+            self.get_current_item(
+
+                db=db,
+
+                session_id=session.id,
+
+            )
+
+        )
+
+
+        if existing_item:
+
+            return self.get_session_state(
+
+                db=db,
+
+                user_id=user_id,
+
+                session_id=session.id,
+
+            )["exercise"]
+
+
+        exercise_data = (
+
+            self.exercise_service
+            .generate_exercise(
+
+                db=db,
+
+                user_id=user_id,
+
+                provider=provider,
+
+            )
+
+        )
+
+
+        exercise = (
+
+            db.query(
+                AdaptiveExercise
+            )
+
+            .filter(
+
+                AdaptiveExercise.exercise_id
+                == exercise_data[
+                    "exercise_id"
+                ],
+
+                AdaptiveExercise.user_id
+                == user_id,
+
+            )
+
+            .first()
+
+        )
+
+
+        if not exercise:
+
+            raise ValueError(
+                "Generated exercise could not be found"
+            )
+
+
+        next_sequence = (
+
+            session.completed_exercises
+            + 1
+
+        )
+
+
+        item = PracticeSessionItem(
+
+            session_id=
+                session.id,
+
+            exercise_id=
+                exercise.id,
+
+            sequence_number=
+                next_sequence,
+
+        )
+
+
+        db.add(item)
+
+        db.commit()
+
+
+        return exercise_data

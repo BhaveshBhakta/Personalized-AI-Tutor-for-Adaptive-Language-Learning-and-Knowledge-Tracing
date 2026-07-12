@@ -25,6 +25,10 @@ from app.services.adaptive_plan_service import (
     AdaptivePlanService,
 )
 
+from app.services.adaptive_decision_service import (
+    AdaptiveDecisionService,
+)
+
 router = APIRouter(
     prefix="/planner",
     tags=["Planner"],
@@ -32,6 +36,10 @@ router = APIRouter(
 
 adaptive_plan = (
     AdaptivePlanService()
+)
+
+decision_engine = (
+    AdaptiveDecisionService()
 )
 
 @router.get("/today")
@@ -132,6 +140,25 @@ def adaptive_plan_today(
 ):
 
     return adaptive_plan.build_plan(
+
+        db=db,
+
+        user_id=user_id,
+
+    )
+
+@router.get("/decision")
+def learning_decision(
+
+    db: Session = Depends(get_db),
+
+    user_id: int = Depends(
+        get_current_user_id
+    ),
+
+):
+
+    return decision_engine.next_learning_action(
 
         db=db,
 
